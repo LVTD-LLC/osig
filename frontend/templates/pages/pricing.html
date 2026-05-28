@@ -1,34 +1,36 @@
 {% extends "base.html" %}
-{% load webpack_loader static %}
+{% load webpack_loader static seo_tags %}
 
 {% block meta %}
-<title>OSIG - Pricing</title>
-<meta name="description" content="How much to use OSIG? Spoiler alert: it's free!" />
-<meta name="keywords" content="og image, og image creator, og image maker, og image template, og image generator, og image creator, og image maker, og image template, og image template, og image generator, og image creator, og image maker, og image template" />
+{% site_url request.path as page_url %}
+{% absolute_static "vendors/images/logo-square.png" as logo_square_url %}
+{% og_image_url "OSIG Pricing" "Start free with OSIG and upgrade to remove watermarks from generated social preview images." image_url=logo_square_url as page_og_image %}
+<title>OSIG Pricing | Free Open Graph Image Generator</title>
+<meta name="description" content="Start free with OSIG's Open Graph image generator. Upgrade when you need watermark-free social preview images and extra styling options." />
 <meta name="robots" content="index, follow" />
-<link rel="canonical" href="https://{{ request.get_host }}{% url 'pricing' %}" />
+<link rel="canonical" href="{{ page_url }}" />
 
 <meta property="og:type" content="website" />
-<meta property="og:title" content="OSIG - Pricing" />
-<meta property="og:url" content="https://{{ request.get_host }}{% url 'pricing' %}" />
-<meta property="og:description" content="How much to use OSIG? Spoiler alert: it's free!" />
-<meta property="og:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=OSIG - Pricing&subtitle=How much to use OSIG? Spoiler alert: it's free!&image_url=https://osig.app/static/vendors/images/logo-square.png" />
+<meta property="og:title" content="OSIG Pricing | Free Open Graph Image Generator" />
+<meta property="og:url" content="{{ page_url }}" />
+<meta property="og:description" content="Start free with OSIG's Open Graph image generator. Upgrade when you need watermark-free social preview images and extra styling options." />
+<meta property="og:image" content="{{ page_og_image }}" />
 <meta property="og:locale" content="en_US" />
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:creator" content="@rasulkireev" />
 <meta name="twitter:site" content="@rasulkireev" />
-<meta name="twitter:title" content="OSIG - Pricing" />
-<meta name="twitter:description" content="How much to use OSIG? Spoiler alert: it's free!" />
-<meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=OSIG - Pricing&subtitle=How much to use OSIG? Spoiler alert: it's free!&image_url=https://osig.app/static/vendors/images/logo-square.png" />
+<meta name="twitter:title" content="OSIG Pricing | Free Open Graph Image Generator" />
+<meta name="twitter:description" content="Start free with OSIG's Open Graph image generator. Upgrade when you need watermark-free social preview images and extra styling options." />
+<meta name="twitter:image" content="{{ page_og_image }}" />
 {% endblock meta %}
 
 {% block content %}
 <div class="py-24 bg-white sm:py-32">
   <div class="px-6 mx-auto max-w-7xl lg:px-8">
     <div class="mx-auto max-w-4xl sm:text-center">
-      <h2 class="text-base font-semibold leading-7 text-indigo-600">Pricing</h2>
-      <p class="mt-2 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">Free to use and <a href="https://github.com/rasulkireev/osig" class="text-blue-600 underline hover:text-blue-700">self-host</a></p>
+      <p class="text-base font-semibold leading-7 text-indigo-600">Pricing</p>
+      <h1 class="mt-2 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">Free to use and <a href="https://github.com/rasulkireev/osig" class="text-blue-600 underline hover:text-blue-700">self-host</a></h1>
     </div>
     <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-gray-600 sm:text-center">OSIG is completely free to use for anyone and can be <a href="https://github.com/rasulkireev/osig" class="text-blue-600 underline hover:text-blue-700">self-hosted</a>. For additional features and support, check out our paid plans below.</p>
     <div class="flow-root mt-20">
@@ -153,20 +155,50 @@
 {% endblock content %}
 
 {% block schema %}
+{% site_url request.path as page_url %}
+{% absolute_static "vendors/images/logo.png" as logo_url %}
 <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "OSIG - Pricing",
-    "description": "How much to use OSIG? Spoiler alert: it's free!",
-    "thumbnailUrl": "https://osig.app/g?site=x&style=logo&font=markerfelt&title=OSIG - Pricing&subtitle=How much to use OSIG? Spoiler alert: it's free!&image_url=https://osig.app/static/vendors/images/logo-square.png",
-    "url": "https://{{ request.get_host }}{% url 'pricing' %}",
-    "author": {
+    "@type": "SoftwareApplication",
+    "name": "OSIG",
+    "applicationCategory": "DesignApplication",
+    "operatingSystem": "Web",
+    "description": "Start free with OSIG's Open Graph image generator. Upgrade when you need watermark-free social preview images and extra styling options.",
+    "url": "{{ page_url }}",
+    "image": "{{ logo_url }}",
+    "creator": {
       "@type": "Person",
       "givenName": "Rasul",
       "familyName": "Kireev",
       "url": "https://rasulkireev.com/"
-    }
+    },
+    "offers": [
+      {
+        "@type": "Offer",
+        "name": "Free",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      {
+        "@type": "Offer",
+        "name": "Monthly",
+        "price": "10",
+        "priceCurrency": "USD"
+      },
+      {
+        "@type": "Offer",
+        "name": "Annual",
+        "price": "100",
+        "priceCurrency": "USD"
+      },
+      {
+        "@type": "Offer",
+        "name": "One-time",
+        "price": "500",
+        "priceCurrency": "USD"
+      }
+    ]
   }
   </script>
 {% endblock schema %}

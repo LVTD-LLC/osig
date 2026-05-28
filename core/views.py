@@ -11,7 +11,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
-from django.http import HttpResponse, HttpResponseForbidden
+from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -113,6 +113,18 @@ class BlogPostView(DetailView):
     template_name = "blog/blog_post.html"
     context_object_name = "blog_post"
 
+    def get_queryset(self):
+        from core.choices import BlogPostStatus
+
+        return BlogPost.objects.filter(status=BlogPostStatus.PUBLISHED)
+
+    def get_object(self, queryset=None):
+        queryset = queryset or self.get_queryset()
+        blog_post = queryset.filter(slug=self.kwargs["slug"]).order_by("-updated_at", "-created_at").first()
+        if blog_post is None:
+            raise Http404("No published blog post found matching the query")
+        return blog_post
+
 
 class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     login_url = "account_login"
@@ -137,6 +149,7 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         return context
 
 
+@login_required
 def create_checkout_session(request, pk, plan):
     user = request.user
 

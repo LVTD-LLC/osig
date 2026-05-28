@@ -1,6 +1,5 @@
-{% load webpack_loader static %}
-
 <!DOCTYPE html>
+{% load webpack_loader static seo_tags %}
 <html lang="en">
 
 <head>
@@ -11,29 +10,30 @@
 
   <!-- Other meta stuff -->
   <link rel="apple-touch-icon" href="{% static 'vendors/images/logo.png' %}" />
-  <link rel="apple-touch-icon" href="{% static 'vendors/images/logo.png' %}" />
   <link rel="icon" type="image/png" sizes="16x16 32x32 500x500" href="{% static 'vendors/images/logo.png' %}" />
 
   {% block meta %}
-  <title>OSIG</title>
-  <meta name="description" content="Generate Beautiful OG Images for Your Site... For Free!" />
-  <meta name="keywords" content="og image, og image creator, og image maker, og image template, og image generator, og image creator, og image maker, og image template, og image template, og image generator, og image creator, og image maker, og image template" />
+  {% site_url "/" as home_url %}
+  {% absolute_static "vendors/images/logo-square.png" as logo_square_url %}
+  {% og_image_url "Open Graph Image Generator for Social Previews" "Create dynamic Open Graph and Twitter card images for any page with a simple URL-based generator." image_url=logo_square_url as default_og_image %}
+  <title>Open Graph Image Generator for Social Previews | OSIG</title>
+  <meta name="description" content="Create dynamic Open Graph and Twitter card images for any page with OSIG, a free URL-based social preview image generator." />
   <meta name="robots" content="index, follow" />
-  <link rel="canonical" href="https://{{ request.get_host }}/" />
+  <link rel="canonical" href="{{ home_url }}" />
 
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="OSIG" />
-  <meta property="og:url" content="https://{{ request.get_host }}/" />
-  <meta property="og:description" content="Generate Beautiful OG Images for Your Site... For Free!" />
-  <meta property="og:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=OSIG&subtitle=Generate Beautiful OG Images for Your Site... For Free!&image_url=https://osig.app/static/vendors/images/logo-square.png" />
+  <meta property="og:title" content="Open Graph Image Generator for Social Previews | OSIG" />
+  <meta property="og:url" content="{{ home_url }}" />
+  <meta property="og:description" content="Create dynamic Open Graph and Twitter card images for any page with OSIG, a free URL-based social preview image generator." />
+  <meta property="og:image" content="{{ default_og_image }}" />
   <meta property="og:locale" content="en_US" />
 
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:creator" content="@rasulkireev" />
   <meta name="twitter:site" content="@rasulkireev" />
-  <meta name="twitter:title" content="OSIG" />
-  <meta name="twitter:description" content="Generate Beautiful OG Images for Your Site... For Free!" />
-  <meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=OSIG&subtitle=Generate Beautiful OG Images for Your Site... For Free!&image_url=https://osig.app/static/vendors/images/logo-square.png" />
+  <meta name="twitter:title" content="Open Graph Image Generator for Social Previews | OSIG" />
+  <meta name="twitter:description" content="Create dynamic Open Graph and Twitter card images for any page with OSIG, a free URL-based social preview image generator." />
+  <meta name="twitter:image" content="{{ default_og_image }}" />
   {% endblock meta %}
 
   {% stylesheet_pack 'index' %}
@@ -253,6 +253,8 @@
           </p>
         </div>
         <div class="text-xs leading-5 text-center text-gray-500">
+          <a href="{% url 'uses' %}" class="text-xs leading-5 text-center text-gray-500 underline">Uses</a>
+          <span aria-hidden="true"> | </span>
           <a href="https://statushen.com/osig/" class="text-xs leading-5 text-center text-gray-500 underline">Status</a>
         </div>
       </div>
@@ -261,19 +263,32 @@
   </div>
 
   {% block schema %}
+  {% site_url "/" as home_url %}
+  {% absolute_static "vendors/images/logo.png" as logo_url %}
+  {% absolute_static "vendors/images/logo-square.png" as logo_square_url %}
+  {% og_image_url "Open Graph Image Generator for Social Previews" "Create dynamic Open Graph and Twitter card images for any page with a simple URL-based generator." image_url=logo_square_url as default_og_image %}
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebSite",
+      "@type": "WebApplication",
       "name": "OSIG",
-      "description": "Generate Beautiful OG Images for Your Site... For Free!",
-      "thumbnailUrl": "https://osig.app/g?site=x&style=logo&font=markerfelt&title=OSIG&subtitle=Generate Beautiful OG Images for Your Site... For Free!&image_url=https://osig.app/static/vendors/images/logo-square.png",
-      "url": "https://{{ request.get_host }}/",
-      "author": {
+      "alternateName": "Open Source Image Generator",
+      "applicationCategory": "DesignApplication",
+      "operatingSystem": "Web",
+      "description": "Create dynamic Open Graph and Twitter card images for any page with OSIG, a free URL-based social preview image generator.",
+      "url": "{{ home_url }}",
+      "image": "{{ default_og_image|safe }}",
+      "thumbnailUrl": "{{ logo_url }}",
+      "creator": {
         "@type": "Person",
         "givenName": "Rasul",
         "familyName": "Kireev",
         "url": "https://rasulkireev.com/"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
       }
     }
     </script>

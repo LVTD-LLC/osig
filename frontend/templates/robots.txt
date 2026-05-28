@@ -1,0 +1,12 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /accounts/
+Disallow: /settings
+Disallow: /resend-confirmation
+Disallow: /create-customer-portal
+Disallow: /create-checkout-session/
+Disallow: /api/
+Disallow: /anymail/
+Disallow: /stripe/
+
+Sitemap: https://{{ request.get_host }}/sitemap.xml

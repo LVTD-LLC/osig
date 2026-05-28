@@ -16,7 +16,7 @@ Including another URLconf
 from django.contrib import admin
 from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path
-from django.views.generic import TemplateView
+from django.views.generic import RedirectView, TemplateView
 
 from osig.sitemaps import sitemaps
 
@@ -25,6 +25,8 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     path("anymail/", include("anymail.urls")),
     path("stripe/", include("djstripe.urls", namespace="djstripe")),
+    path("robots.txt", TemplateView.as_view(template_name="robots.txt", content_type="text/plain"), name="robots_txt"),
+    path("uses/", RedirectView.as_view(pattern_name="uses", permanent=True), name="uses_trailing_slash_redirect"),
     path("uses", TemplateView.as_view(template_name="pages/uses.html"), name="uses"),
     path("", include("core.urls")),
     path(
