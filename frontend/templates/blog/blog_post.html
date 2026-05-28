@@ -1,19 +1,20 @@
 {% extends "base.html" %}
-{% load webpack_loader static %}
+{% load webpack_loader static seo_tags %}
 {% load markdown_extras %}
 
 {% block meta %}
+{% site_url blog_post.get_absolute_url as page_url %}
+{% og_image_url blog_post.title blog_post.description style="base" font="markerfelt" site="x" as post_og_image %}
 <title>{{ blog_post.title }} | OSIG Blog</title>
 <meta name="description" content="{{ blog_post.description }}" />
-<meta name="keywords" content="{{ blog_post.tags }}" />
 <meta name="robots" content="index, follow" />
-<link rel="canonical" href="https://{{ request.get_host }}{{ blog_post.get_absolute_url }}" />
+<link rel="canonical" href="{{ page_url }}" />
 
 <meta property="og:type" content="article" />
 <meta property="og:title" content="{{ blog_post.title }}" />
-<meta property="og:url" content="https://{{ request.get_host }}{{ blog_post.get_absolute_url }}" />
+<meta property="og:url" content="{{ page_url }}" />
 <meta property="og:description" content="{{ blog_post.description }}" />
-<meta property="og:image" content="https://osig.app/g?site=x&style=base&font=markerfelt&title={{ blog_post.title }}&subtitle={{ blog_post.description }}" />
+<meta property="og:image" content="{{ post_og_image }}" />
 <meta property="og:locale" content="en_US" />
 
 <meta name="twitter:card" content="summary_large_image" />
@@ -21,7 +22,7 @@
 <meta name="twitter:site" content="@rasulkireev" />
 <meta name="twitter:title" content="{{ blog_post.title }}" />
 <meta name="twitter:description" content="{{ blog_post.description }}" />
-<meta name="twitter:image" content="https://osig.app/g?site=x&style=base&font=markerfelt&title={{ blog_post.title }}&subtitle={{ blog_post.description }}" />
+<meta name="twitter:image" content="{{ post_og_image }}" />
 {% endblock meta %}
 
 {% block content %}
@@ -37,14 +38,17 @@
 {% endblock content %}
 
 {% block schema %}
+{% site_url blog_post.get_absolute_url as page_url %}
+{% absolute_static "vendors/images/logo.png" as logo_url %}
+{% og_image_url blog_post.title blog_post.description style="base" font="markerfelt" site="x" as post_og_image %}
 <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
-    "headline": "{{ blog_post.title }}",
-    "description": "{{ blog_post.description }}",
-    "image": "https://osig.app/g?site=x&style=base&font=markerfelt&title={{ blog_post.title }}&subtitle={{ blog_post.description }}",
-    "url": "https://{{ request.get_host }}{{ blog_post.get_absolute_url }}",
+    "headline": "{{ blog_post.title|escapejs }}",
+    "description": "{{ blog_post.description|escapejs }}",
+    "image": "{{ post_og_image|safe }}",
+    "url": "{{ page_url }}",
     "datePublished": "{{ blog_post.created_at|date:'c' }}",
     "dateModified": "{{ blog_post.updated_at|date:'c' }}",
     "author": {
@@ -57,12 +61,12 @@
       "name": "OSIG",
       "logo": {
         "@type": "ImageObject",
-        "url": "{% static 'vendors/images/logo.png' %}"
+        "url": "{{ logo_url }}"
       }
     },
     "mainEntityOfPage": {
       "@type": "WebPage",
-      "@id": "https://{{ request.get_host }}{{ blog_post.get_absolute_url }}"
+      "@id": "{{ page_url }}"
     }
   }
 </script>

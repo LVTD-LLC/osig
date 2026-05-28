@@ -1,26 +1,28 @@
 {% extends "base.html" %}
-{% load webpack_loader static %}
+{% load webpack_loader static seo_tags %}
 
 {% block meta %}
-<title>OSIG - How to use?</title>
-<meta name="description" content="It's simple, just add it the link to your site as shown in this post." />
-<meta name="keywords" content="og image, og image creator, og image maker, og image template, og image generator, og image creator, og image maker, og image template, og image template, og image generator, og image creator, og image maker, og image template" />
+{% site_url request.path as page_url %}
+{% absolute_static "vendors/images/logo-square.png" as logo_square_url %}
+{% og_image_url "How to Generate Open Graph Images" "Learn how to create and add OSIG social preview images to your site with URL parameters and examples." image_url=logo_square_url as page_og_image %}
+<title>How to Generate Open Graph Images | OSIG</title>
+<meta name="description" content="Learn how to generate Open Graph and Twitter card images with OSIG URL parameters, examples, styles, fonts, and integration notes." />
 <meta name="robots" content="index, follow" />
-<link rel="canonical" href="https://{{ request.get_host }}{% url 'how_to' %}" />
+<link rel="canonical" href="{{ page_url }}" />
 
 <meta property="og:type" content="website" />
-<meta property="og:title" content="OSIG - How to use?" />
-<meta property="og:url" content="https://{{ request.get_host }}{% url 'how_to' %}" />
-<meta property="og:description" content="It's simple, just add it the link to your site as shown in this post." />
-<meta property="og:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=OSIG - How to use?&subtitle=It's simple, just add it the link to your site as shown in this post.&image_url=https://osig.app/static/vendors/images/logo-square.png" />
+<meta property="og:title" content="How to Generate Open Graph Images | OSIG" />
+<meta property="og:url" content="{{ page_url }}" />
+<meta property="og:description" content="Learn how to generate Open Graph and Twitter card images with OSIG URL parameters, examples, styles, fonts, and integration notes." />
+<meta property="og:image" content="{{ page_og_image }}" />
 <meta property="og:locale" content="en_US" />
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:creator" content="@rasulkireev" />
 <meta name="twitter:site" content="@rasulkireev" />
-<meta name="twitter:title" content="OSIG - How to use?" />
-<meta name="twitter:description" content="It's simple, just add it the link to your site as shown in this post." />
-<meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=OSIG - How to use?&subtitle=It's simple, just add it the link to your site as shown in this post.&image_url=https://osig.app/static/vendors/images/logo-square.png" />
+<meta name="twitter:title" content="How to Generate Open Graph Images | OSIG" />
+<meta name="twitter:description" content="Learn how to generate Open Graph and Twitter card images with OSIG URL parameters, examples, styles, fonts, and integration notes." />
+<meta name="twitter:image" content="{{ page_og_image }}" />
 {% endblock meta %}
 
 {% block content %}
@@ -45,12 +47,16 @@
 
     <div class="mt-10">
       <h2 class="pb-2 my-4 text-3xl font-semibold border-b border-gray-200">Parameters</h2>
-      <p class="mb-4">Parameters will vary depending on the style. All of them are optional, but if you don't pass anything it will look like sh*t.</p>
+      <p class="mb-4">Parameters vary by style. All of them are optional, but a title and subtitle usually produce a better preview.</p>
 
       <img
         src="{% static 'vendors/images/no-params-example.png' %}"
         class="mb-4 rounded-md"
         alt="OG Image Generator Parameters"
+        width="797"
+        height="447"
+        loading="lazy"
+        decoding="async"
       />
 
       <p class="mb-4">Below is a list of all parameters we currently support:</p>
@@ -103,9 +109,13 @@
       src="{% static 'vendors/images/base-example.png' %}"
       class="mb-4 rounded-md"
       alt="Base OG Image Example"
+      width="800"
+      height="450"
+      loading="lazy"
+      decoding="async"
       />
 
-      <p class="mb-4">This is the that I use to generate the image:</p>
+      <p class="mb-4">This is the URL that generates the image:</p>
       <pre class="block overflow-x-auto p-4 bg-gray-100 rounded-md"><code>https://osig.app/g?
   site=x
   &style=base
@@ -116,15 +126,19 @@
   &image_url=https://www.rasulkireev.com/_astro/a_smiling_boy_from_Pixars_Coco.DrP3G0Ol.png</code></pre>
 
       <h3 id="logo" class="pb-2 mt-6 text-2xl font-semibold">Logo Style</h3>
-      <p class="mb-4">Logo style is super useful if you are trying to highlight a company or a project, advertize job postings or anything like. Super minimalistic.</p>
+      <p class="mb-4">Logo style is useful when you want to highlight a company, a project, a job posting, or another branded page.</p>
       <p class="mb-4">Here is how I use it for one of my job boards:</p>
       <img
         src="{% static 'vendors/images/logo-example.png' %}"
         class="mb-4 rounded-md"
         alt="Logo OG Image Example"
+        width="796"
+        height="445"
+        loading="lazy"
+        decoding="async"
       />
 
-      <p class="mb-4">This is the that I use to generate the image:</p>
+      <p class="mb-4">This is the URL that generates the image:</p>
       <pre class="block overflow-x-auto p-4 bg-gray-100 rounded-md"><code>https://osig.app/g?
   site=x
   &style=logo
@@ -143,6 +157,10 @@
             src="{% static 'vendors/images/helvetica-example.png' %}"
             class="mb-4 rounded-md"
             alt="Helvetica Font Example"
+            width="365"
+            height="96"
+            loading="lazy"
+            decoding="async"
           />
         </li>
         <li id="Markerfelt">
@@ -151,6 +169,10 @@
             src="{% static 'vendors/images/markerfelt-example.png' %}"
             class="mb-4 rounded-md"
             alt="Markerfelt Font Example"
+            width="362"
+            height="98"
+            loading="lazy"
+            decoding="async"
           />
         </li>
         <li id="Papyrus">
@@ -159,6 +181,10 @@
             src="{% static 'vendors/images/papyrus-example.png' %}"
             class="mb-4 rounded-md"
             alt="Papyrus Font Example"
+            width="276"
+            height="88"
+            loading="lazy"
+            decoding="async"
           />
         </li>
       </ul>
@@ -200,20 +226,37 @@
 {% endblock content %}
 
 {% block schema %}
+{% site_url request.path as page_url %}
 <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "OSIG - How to use?",
-    "description": "It's simple, just add it the link to your site as shown in this post.",
-    "thumbnailUrl": "https://osig.app/g?site=x&style=logo&font=markerfelt&title=OSIG - How to use?&subtitle=It's simple, just add it the link to your site as shown in this post.&image_url=https://osig.app/static/vendors/images/logo-square.png",
-    "url": "https://{{ request.get_host }}{% url 'how_to' %}",
+    "@type": "HowTo",
+    "name": "How to Generate Open Graph Images with OSIG",
+    "description": "Learn how to generate Open Graph and Twitter card images with OSIG URL parameters, examples, styles, fonts, and integration notes.",
+    "url": "{{ page_url }}",
     "author": {
       "@type": "Person",
       "givenName": "Rasul",
       "familyName": "Kireev",
       "url": "https://rasulkireev.com/"
-    }
+    },
+    "step": [
+      {
+        "@type": "HowToStep",
+        "name": "Choose image settings",
+        "text": "Select the image size, style, font, and text parameters for the social preview image."
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Generate the image URL",
+        "text": "Use the OSIG generator to create a URL that returns the generated PNG image."
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Add the URL to meta tags",
+        "text": "Place the generated image URL in your Open Graph and Twitter card image tags."
+      }
+    ]
   }
   </script>
 {% endblock schema %}
