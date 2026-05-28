@@ -1,10 +1,12 @@
 import pytest
 from django.conf import settings
 from django.contrib.sites.models import Site
+from django.test import RequestFactory, override_settings
 from django.urls import reverse
 
 from core.choices import BlogPostStatus
 from core.models import BlogPost
+from core.templatetags.seo_tags import site_url
 
 
 @pytest.mark.django_db
@@ -73,13 +75,26 @@ class TestSeoSurface:
 
     def test_public_marketing_pages_render_indexable_metadata(self, client):
         for url_name in ["how_to", "pricing", "uses", "blog_posts"]:
-            response = client.get(reverse(url_name))
+            response = client.get(reverse(url_name), secure=True)
 
             assert response.status_code == 200
             body = response.content.decode()
             assert '<meta name="robots" content="index, follow" />' in body
             assert '<link rel="canonical" href="https://testserver' in body
             assert '<script type="application/ld+json">' in body
+
+    def test_site_url_uses_request_scheme_for_local_preview(self):
+        request = RequestFactory().get("/how-to", HTTP_HOST="localhost:8000")
+
+        assert site_url({"request": request}, "/how-to") == "http://localhost:8000/how-to"
+
+    @override_settings(ALLOWED_HOSTS=["preview.example"], SECURE_SSL_REDIRECT=False)
+    def test_site_url_without_request_uses_configured_non_production_origin(self):
+        assert site_url({}, "/how-to") == "http://preview.example/how-to"
+
+    @override_settings(ALLOWED_HOSTS=["osig.app"], SECURE_SSL_REDIRECT=True)
+    def test_site_url_without_request_uses_https_when_ssl_redirect_is_enabled(self):
+        assert site_url({}, "/how-to") == "https://osig.app/how-to"
 
     def test_sitemap_includes_published_blog_slugs_once(self, client):
         Site.objects.update_or_create(id=settings.SITE_ID, defaults={"domain": "osig.app", "name": "osig.app"})

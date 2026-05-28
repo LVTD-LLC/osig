@@ -1,15 +1,25 @@
 from urllib.parse import urlencode
 
 from django import template
+from django.conf import settings
 from django.templatetags.static import static
 
 register = template.Library()
 
 
+def _fallback_host():
+    for host in getattr(settings, "ALLOWED_HOSTS", []):
+        if host and host != "*":
+            return host.lstrip(".")
+    return "localhost:8000"
+
+
 def _origin(context):
     request = context.get("request")
-    host = request.get_host() if request else "osig.app"
-    return f"https://{host}"
+    if request:
+        return request.build_absolute_uri("/").rstrip("/")
+    scheme = "https" if getattr(settings, "SECURE_SSL_REDIRECT", False) else "http"
+    return f"{scheme}://{_fallback_host()}"
 
 
 @register.simple_tag(takes_context=True)
