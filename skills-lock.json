@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "django-q2": {
+      "source": "LVTD-LLC/skills",
+      "sourceType": "github",
+      "skillPath": "skills/django-q2/SKILL.md",
+      "computedHash": "7e79d3c37f072bbb66c0326637d8fbfa936af7690287ae593a52fe1623f1b4c2"
+    },
+    "fastmcp-django": {
+      "source": "LVTD-LLC/skills",
+      "sourceType": "github",
+      "skillPath": "skills/fastmcp-django/SKILL.md",
+      "computedHash": "fd3327b7f5bef8d12dd22de5011061c03663887a5802bef8427f284e8147270f"
+    }
+  }
+}
