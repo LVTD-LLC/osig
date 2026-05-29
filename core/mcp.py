@@ -9,6 +9,7 @@ from typing import Annotated, Any, Literal
 from urllib.parse import urlencode, urlparse
 
 from django.db import close_old_connections
+from django.db.models import Q
 from django.urls import reverse
 from fastmcp import FastMCP
 from PIL import Image as PILImage
@@ -348,7 +349,9 @@ def create_mcp() -> FastMCP:
         close_old_connections()
         try:
             profile = _profile_for_key(key)
-            queryset = ImageModel.objects.filter(image_data__key=profile.key).order_by("-updated_at")
+            queryset = ImageModel.objects.filter(Q(profile=profile) | Q(image_data__key=profile.key)).order_by(
+                "-updated_at"
+            )
             if style:
                 queryset = queryset.filter(image_data__style=style)
 

@@ -237,11 +237,15 @@ def test_list_recent_generated_images_requires_and_scopes_by_key():
         image_data={"key": first_user.profile.key, "style": "base", "title": "First image"},
     )
     ImageModel.objects.create(
+        profile=first_user.profile,
+        image_data={"key": first_user.profile.key, "style": "logo", "title": "First logo image"},
+    )
+    ImageModel.objects.create(
         profile=second_user.profile,
         image_data={"key": second_user.profile.key, "style": "base", "title": "Second image"},
     )
 
-    result = _run(_call_tool("list_recent_generated_images", {"key": first_user.profile.key}))
+    result = _run(_call_tool("list_recent_generated_images", {"key": first_user.profile.key, "style": "base"}))
     missing_key_result = _run(_call_tool("list_recent_generated_images", {}, raise_on_error=False))
 
     assert result.data["count"] == 1

@@ -26,7 +26,7 @@ When using `fastmcp list --command` with ad hoc local settings instead of a `.en
 - `normalize_image_params`: canonicalizes renderer inputs and maps `image_or_logo` to `image_url`.
 - `render_image_preview`: renders a preview and returns metadata plus optional base64 image bytes.
 - `build_signed_image_url`: creates a tamper-proof public `/g` URL.
-- `list_recent_generated_images`: returns capped summaries of persisted images.
+- `list_recent_generated_images`: returns capped summaries of persisted images scoped to a required profile key.
 - `get_recent_render_metrics`: returns recent render attempt health metrics.
 
 ## Transport Notes
