@@ -12,11 +12,13 @@ from django.db import close_old_connections
 from django.db.models import Q
 from django.urls import reverse
 from fastmcp import FastMCP
+from fastmcp.server.dependencies import get_http_request
 from PIL import Image as PILImage
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.image_styles import generate_image_router
 from core.image_utils import get_image_dimensions
+from core.mcp_auth import authenticate_mcp_headers
 from core.models import Image as ImageModel, Profile
 from core.render_observability import build_render_metrics
 from core.signing import build_signed_params
@@ -178,6 +180,32 @@ def _profile_for_key(key: str) -> Profile:
         raise ValueError("No profile exists for the supplied key.") from exc
 
 
+def _get_http_profile() -> Profile | None:
+    try:
+        request = get_http_request()
+    except RuntimeError:
+        return None
+
+    return authenticate_mcp_headers(request.headers)
+
+
+def _params_for_request(params: ImageParams) -> ImageParams:
+    profile = _get_http_profile()
+    if profile is None:
+        return params
+
+    if params.key and params.key != profile.key:
+        raise PermissionError("The supplied key does not match the authenticated MCP profile.")
+
+    return params.model_copy(update={"key": profile.key})
+
+
+def _require_http_superuser() -> None:
+    profile = _get_http_profile()
+    if profile is not None and not profile.user.is_superuser:
+        raise PermissionError("This MCP tool requires a superuser profile key.")
+
+
 def _summarize_image(image: ImageModel) -> dict[str, Any]:
     image_data = image.image_data or {}
 
@@ -263,6 +291,7 @@ def create_mcp() -> FastMCP:
         """Normalize OSIG image parameters into public URL params and internal render params."""
         close_old_connections()
         try:
+            params = _params_for_request(params)
             normalized = _normalize_image_params(params)
             return {
                 "public_params": normalized.public_params,
@@ -283,6 +312,7 @@ def create_mcp() -> FastMCP:
         close_old_connections()
         started_at = perf_counter()
         try:
+            params = _params_for_request(params)
             normalized = _normalize_image_params(params)
             image_buffer = generate_image_router(normalized.render_params)
             payload = image_buffer.getvalue()
@@ -316,6 +346,7 @@ def create_mcp() -> FastMCP:
         normalized_base_url = _normalize_base_url(base_url)
         close_old_connections()
         try:
+            params = _params_for_request(params)
             normalized = _normalize_image_params(params)
             signed_params, expires_at = build_signed_params(
                 params=normalized.public_params,
@@ -348,7 +379,11 @@ def create_mcp() -> FastMCP:
         """Return capped summaries of generated images scoped to one profile key."""
         close_old_connections()
         try:
-            profile = _profile_for_key(key)
+            authenticated_profile = _get_http_profile()
+            if authenticated_profile is not None and key != authenticated_profile.key:
+                raise PermissionError("The supplied key does not match the authenticated MCP profile.")
+
+            profile = authenticated_profile or _profile_for_key(key)
             queryset = ImageModel.objects.filter(Q(profile=profile) | Q(image_data__key=profile.key)).order_by(
                 "-updated_at"
             )
@@ -365,6 +400,7 @@ def create_mcp() -> FastMCP:
         """Return aggregate render health metrics for the recent render-attempt window."""
         close_old_connections()
         try:
+            _require_http_superuser()
             metrics = build_render_metrics(window_hours=window_hours)
             return {
                 "window_hours": metrics.window_hours,

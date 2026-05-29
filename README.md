@@ -10,7 +10,9 @@ make serve
 
 The local backend and worker services use `Dockerfile-python`, and production deploys build one shared image from `deployment/Dockerfile`. At runtime, `APP_PROCESS_TYPE=server` starts Gunicorn and `APP_PROCESS_TYPE=worker` starts Django Q workers. For CapRover, set `APP_PROCESS_TYPE=server` on the `osig` app, `APP_PROCESS_TYPE=worker` on the `osig-workers` app, and the GitHub repository variable `WORKERS_APP_PROCESS_TYPE=worker`.
 
-For local AI-agent iteration on generated images, OSIG also exposes a FastMCP stdio server:
+For AI-agent iteration on generated images, OSIG exposes a hosted FastMCP server at `/mcp/` from the web container. Hosted requests authenticate with an OSIG profile key via `X-API-Key` or `Authorization: Bearer <key>`.
+
+For local stdio clients, run:
 
 ```
 uv run python mcp_server.py

@@ -78,6 +78,51 @@ def test_normalize_image_params_maps_logo_alias_to_public_params():
 
 
 @pytest.mark.django_db(transaction=True)
+def test_normalize_image_params_uses_authenticated_profile_key(monkeypatch):
+    import core.mcp as core_mcp
+
+    user = User.objects.create_user(username="hosted", email="hosted@example.com", password="pass123")
+    monkeypatch.setattr(core_mcp, "_get_http_profile", lambda: user.profile)
+
+    result = _run(
+        _call_tool(
+            "normalize_image_params",
+            {
+                "params": {
+                    "style": "base",
+                    "title": "Hosted MCP",
+                }
+            },
+        )
+    )
+
+    assert result.data["public_params"]["key"] == user.profile.key
+    assert "profile_id" not in result.data["render_params"]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_normalize_image_params_rejects_mismatched_authenticated_key(monkeypatch):
+    import core.mcp as core_mcp
+
+    user = User.objects.create_user(username="hosted-mismatch", email="hosted-mismatch@example.com", password="pass123")
+    monkeypatch.setattr(core_mcp, "_get_http_profile", lambda: user.profile)
+
+    with pytest.raises(ToolError):
+        _run(
+            _call_tool(
+                "normalize_image_params",
+                {
+                    "params": {
+                        "key": "other-key",
+                        "style": "base",
+                        "title": "Hosted MCP",
+                    }
+                },
+            )
+        )
+
+
+@pytest.mark.django_db(transaction=True)
 def test_render_image_preview_returns_metadata_and_optional_image(monkeypatch):
     import core.mcp as core_mcp
 
@@ -274,3 +319,14 @@ def test_get_recent_render_metrics_reports_existing_attempts():
     assert result.data["failed_attempts"] == 1
     assert result.data["fail_rate_percent"] == 50.0
     assert result.data["error_counts"][RenderErrorType.TRANSIENT_UPSTREAM_FETCH] == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_get_recent_render_metrics_requires_superuser_for_hosted_auth(monkeypatch):
+    import core.mcp as core_mcp
+
+    user = User.objects.create_user(username="regular", email="regular@example.com", password="pass123")
+    monkeypatch.setattr(core_mcp, "_get_http_profile", lambda: user.profile)
+
+    with pytest.raises(ToolError):
+        _run(_call_tool("get_recent_render_metrics", {"window_hours": 24}))

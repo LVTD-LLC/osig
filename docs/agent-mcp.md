@@ -1,10 +1,30 @@
 # OSIG Agent MCP
 
-OSIG exposes a local FastMCP server for agents that need to iterate on generated Open Graph images.
+OSIG exposes a hosted FastMCP server for agents that need to iterate on generated Open Graph images.
 
 The server is intentionally small and explicit. It does not expose generic database access or arbitrary file access. The tools wrap the existing image renderer, signing helpers, and render metrics so future improvements stay close to the Django source of truth.
 
+## Hosted Endpoint
+
+Production serves MCP at:
+
+```text
+https://osig.app/mcp/
+```
+
+Hosted requests require an OSIG profile key in either header:
+
+```text
+X-API-Key: <profile-key>
+Authorization: Bearer <profile-key>
+```
+
+The web process serves `/mcp/` through ASGI in the same container as Django, matching the `django-saas-starter` hosted MCP pattern.
+The production server command runs `gunicorn osig.asgi:application` with `uvicorn_worker.UvicornWorker`; no separate MCP container is required.
+
 ## Run Locally
+
+For stdio clients:
 
 ```bash
 uv run python mcp_server.py
@@ -27,7 +47,7 @@ When using `fastmcp list --command` with ad hoc local settings instead of a `.en
 - `render_image_preview`: renders a preview and returns metadata plus optional base64 image bytes.
 - `build_signed_image_url`: creates a tamper-proof public `/g` URL.
 - `list_recent_generated_images`: returns capped summaries of persisted images scoped to a required profile key.
-- `get_recent_render_metrics`: returns recent render attempt health metrics.
+- `get_recent_render_metrics`: returns recent render attempt health metrics. Hosted HTTP calls require a superuser profile key.
 
 ## Transport Notes
 
