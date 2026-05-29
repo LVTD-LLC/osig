@@ -42,7 +42,7 @@ class TestOnboardingWizardAPI:
         assert "sig" in parsed
         assert "exp" in parsed
 
-        assert "<meta property=\"og:title\"" in data["meta_tags"]
+        assert '<meta property="og:title"' in data["meta_tags"]
         assert "twitter:image" in data["meta_tags"]
         assert data["validation_links"]["Facebook Sharing Debugger"].startswith(
             "https://developers.facebook.com/tools/debug/"

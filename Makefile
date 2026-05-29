@@ -1,18 +1,30 @@
+%:
+	@:
+
 serve:
-	docker-compose up -d --build
-	docker compose logs -f backend
+	docker compose -f docker-compose-local.yml up -d --build
+	docker compose -f docker-compose-local.yml logs -f backend
 
 shell:
-	docker compose run --rm backend python ./manage.py shell_plus --ipython
+	docker compose -f docker-compose-local.yml run --rm backend uv run --no-sync python ./manage.py shell_plus --ipython
+
+manage:
+	docker compose -f docker-compose-local.yml run --rm backend uv run --no-sync python ./manage.py $(filter-out $@,$(MAKECMDGOALS))
+
+makemigrations:
+	docker compose -f docker-compose-local.yml run --rm backend uv run --no-sync python ./manage.py makemigrations
+
+migrate:
+	docker compose -f docker-compose-local.yml run --rm backend uv run --no-sync python ./manage.py migrate
 
 test:
-	docker compose run --rm backend pytest
+	docker compose -f docker-compose-local.yml run --rm backend uv run --no-sync pytest $(filter-out $@,$(MAKECMDGOALS))
 
 test-webhook:
-	docker compose run --rm stripe trigger customer.subscription.created
+	docker compose -f docker-compose-local.yml run --rm stripe trigger customer.subscription.created
 
 stripe-sync:
-	docker compose run --rm backend python ./manage.py djstripe_sync_models
+	docker compose -f docker-compose-local.yml run --rm backend uv run --no-sync python ./manage.py djstripe_sync_models
 
 restart-worker:
-	docker compose up -d workers --force-recreate
+	docker compose -f docker-compose-local.yml up -d workers --force-recreate
