@@ -92,6 +92,8 @@ class TestSeoSurface:
         assert "https://osig.app/mcp/" in body
         assert "X-API-Key" in body
         assert "get_image_generation_contract" in body
+        assert "normalize_image_params" in body
+        assert "render_image_preview" in body
         assert "build_signed_image_url" in body
 
     def test_site_url_uses_request_scheme_for_local_preview(self):
