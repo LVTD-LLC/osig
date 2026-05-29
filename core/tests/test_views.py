@@ -83,6 +83,17 @@ class TestSeoSurface:
             assert '<link rel="canonical" href="https://testserver' in body
             assert '<script type="application/ld+json">' in body
 
+    def test_how_to_page_documents_mcp_usage(self, client):
+        response = client.get(reverse("how_to"))
+
+        assert response.status_code == 200
+        body = response.content.decode()
+        assert "Using the MCP" in body
+        assert "https://osig.app/mcp/" in body
+        assert "X-API-Key" in body
+        assert "get_image_generation_contract" in body
+        assert "build_signed_image_url" in body
+
     def test_site_url_uses_request_scheme_for_local_preview(self):
         request = RequestFactory().get("/how-to", HTTP_HOST="localhost:8000")
 
