@@ -10,6 +10,16 @@ make serve
 
 The local backend and worker services use `Dockerfile-python`, and production deploys build one shared image from `deployment/Dockerfile`. At runtime, `APP_PROCESS_TYPE=server` starts Gunicorn and `APP_PROCESS_TYPE=worker` starts Django Q workers. For CapRover, set `APP_PROCESS_TYPE=server` on the `osig` app, `APP_PROCESS_TYPE=worker` on the `osig-workers` app, and the GitHub repository variable `WORKERS_APP_PROCESS_TYPE=worker`.
 
+For AI-agent iteration on generated images, OSIG exposes a hosted FastMCP server at `/mcp/` from the web container. Hosted requests authenticate with an OSIG profile key via `X-API-Key` or `Authorization: Bearer <key>`.
+
+For local stdio clients, run:
+
+```
+uv run python mcp_server.py
+```
+
+See [docs/agent-mcp.md](docs/agent-mcp.md) for the tool contract and transport notes.
+
 ## How to use?
 
 The OG Image Generator allows you to create custom Open Graph images for your website. You can specify various parameters to customize the image according to your needs.
