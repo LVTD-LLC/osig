@@ -6,12 +6,13 @@ import io
 from dataclasses import dataclass
 from time import perf_counter
 from typing import Annotated, Any, Literal
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
+import requests
 from django.db import close_old_connections
 from django.urls import reverse
 from fastmcp import FastMCP
-from PIL import Image as PILImage
+from PIL import Image as PILImage, UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.image_styles import generate_image_router
@@ -19,6 +20,7 @@ from core.image_utils import get_image_dimensions
 from core.models import Image as ImageModel, Profile
 from core.render_observability import build_render_metrics, classify_render_error
 from core.signing import build_signed_params
+from osig.utils import get_osig_logger
 
 StyleName = Literal["base", "logo", "job_classic", "job_logo", "job_clean"]
 SiteName = Literal["x", "meta"]
@@ -30,6 +32,14 @@ STYLE_CHOICES: tuple[StyleName, ...] = ("base", "logo", "job_classic", "job_logo
 SITE_CHOICES: tuple[SiteName, ...] = ("x", "meta")
 FONT_CHOICES: tuple[FontName, ...] = ("helvetica", "markerfelt", "papyrus")
 FORMAT_CHOICES: tuple[OutputFormat, ...] = ("png", "jpeg")
+EXPECTED_RENDER_EXCEPTIONS = (
+    requests.exceptions.RequestException,
+    UnidentifiedImageError,
+    OSError,
+    ValueError,
+)
+
+logger = get_osig_logger(__name__)
 
 
 class ImageParams(BaseModel):
@@ -146,12 +156,23 @@ def _image_payload_metadata(payload: bytes) -> dict[str, Any]:
     }
 
 
+def _normalize_base_url(base_url: str) -> str:
+    normalized_base_url = base_url.strip().rstrip("/")
+    parsed = urlparse(normalized_base_url)
+
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError(f"base_url must be an absolute http:// or https:// URL, got: {base_url!r}")
+
+    return normalized_base_url
+
+
 def _summarize_image(image: ImageModel) -> dict[str, Any]:
     image_data = image.image_data or {}
 
     try:
         generated_image_url = image.generated_image.url if image.generated_image else ""
-    except Exception:
+    except Exception as exc:
+        logger.warning("Failed to resolve generated image URL", image_id=image.id, error=str(exc))
         generated_image_url = ""
 
     return {
@@ -268,7 +289,7 @@ def create_mcp() -> FastMCP:
                 response["image_base64"] = encoded_image
                 response["data_uri"] = f"data:{normalized.content_type};base64,{encoded_image}"
             return response
-        except Exception as exc:
+        except EXPECTED_RENDER_EXCEPTIONS as exc:
             return {
                 "ok": False,
                 "error_type": classify_render_error(exc),
@@ -288,6 +309,7 @@ def create_mcp() -> FastMCP:
         expires_in_seconds: Annotated[int, Field(ge=1, le=60 * 60 * 24 * 30)] = 3600,
     ) -> dict[str, Any]:
         """Build a tamper-proof public `/g` image URL from normalized parameters."""
+        normalized_base_url = _normalize_base_url(base_url)
         close_old_connections()
         try:
             normalized = _normalize_image_params(params)
@@ -295,7 +317,7 @@ def create_mcp() -> FastMCP:
                 params=normalized.public_params,
                 expires_in_seconds=expires_in_seconds,
             )
-            signed_url = f"{base_url.rstrip('/')}{reverse('generate_image')}?{urlencode(signed_params)}"
+            signed_url = f"{normalized_base_url}{reverse('generate_image')}?{urlencode(signed_params)}"
 
             return {
                 "signed_url": signed_url,
@@ -308,18 +330,23 @@ def create_mcp() -> FastMCP:
 
     @mcp.tool(timeout=10)
     def list_recent_generated_images(
+        key: Annotated[
+            str,
+            Field(
+                min_length=1,
+                max_length=64,
+                description="Required OSIG profile key used to scope image results.",
+            ),
+        ],
         limit: Annotated[int, Field(ge=1, le=25)] = 10,
         style: StyleName | None = None,
-        key: Annotated[str | None, Field(max_length=64)] = None,
     ) -> dict[str, Any]:
-        """Return capped summaries of recently persisted generated images."""
+        """Return capped summaries of generated images scoped to one profile key."""
         close_old_connections()
         try:
-            queryset = ImageModel.objects.order_by("-updated_at")
+            queryset = ImageModel.objects.filter(image_data__key=key).order_by("-updated_at")
             if style:
                 queryset = queryset.filter(image_data__style=style)
-            if key:
-                queryset = queryset.filter(image_data__key=key)
 
             images = [_summarize_image(image) for image in queryset[:limit]]
             return {"count": len(images), "images": images}

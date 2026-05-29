@@ -4,11 +4,13 @@ import io
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+import requests
 from django.contrib.auth.models import User
 from fastmcp import Client
+from fastmcp.exceptions import ToolError
 from PIL import Image
 
-from core.models import RenderAttempt
+from core.models import Image as ImageModel, RenderAttempt
 from core.render_observability import RenderErrorType
 
 
@@ -23,11 +25,11 @@ def _tiny_png_buffer():
     return buffer
 
 
-async def _call_tool(name, arguments=None):
+async def _call_tool(name, arguments=None, raise_on_error=True):
     from core.mcp import create_mcp
 
     async with Client(create_mcp()) as client:
-        return await client.call_tool(name, arguments or {})
+        return await client.call_tool(name, arguments or {}, raise_on_error=raise_on_error)
 
 
 def test_mcp_lists_image_iteration_tools():
@@ -104,6 +106,56 @@ def test_render_image_preview_returns_metadata_and_optional_image(monkeypatch):
 
 
 @pytest.mark.django_db(transaction=True)
+def test_render_image_preview_returns_expected_render_errors(monkeypatch):
+    import core.mcp as core_mcp
+
+    def unavailable_router(params):
+        raise requests.exceptions.Timeout("upstream timed out")
+
+    monkeypatch.setattr(core_mcp, "generate_image_router", unavailable_router)
+
+    result = _run(
+        _call_tool(
+            "render_image_preview",
+            {
+                "params": {
+                    "style": "base",
+                    "title": "Preview title",
+                },
+                "include_image_base64": False,
+            },
+        )
+    )
+
+    assert result.data["ok"] is False
+    assert result.data["error_type"] == RenderErrorType.TRANSIENT_UPSTREAM_FETCH
+
+
+@pytest.mark.django_db(transaction=True)
+def test_render_image_preview_reraises_unexpected_code_errors(monkeypatch):
+    import core.mcp as core_mcp
+
+    def broken_router(params):
+        raise TypeError("programming error")
+
+    monkeypatch.setattr(core_mcp, "generate_image_router", broken_router)
+
+    with pytest.raises(ToolError):
+        _run(
+            _call_tool(
+                "render_image_preview",
+                {
+                    "params": {
+                        "style": "base",
+                        "title": "Preview title",
+                    },
+                    "include_image_base64": False,
+                },
+            )
+        )
+
+
+@pytest.mark.django_db(transaction=True)
 def test_build_signed_image_url_returns_signed_g_endpoint():
     result = _run(
         _call_tool(
@@ -132,6 +184,48 @@ def test_build_signed_image_url_returns_signed_g_endpoint():
     assert "sig" in query
     assert "exp" in query
     assert "profile_id" not in query
+
+
+@pytest.mark.django_db(transaction=True)
+def test_build_signed_image_url_rejects_non_http_base_url():
+    result = _run(
+        _call_tool(
+            "build_signed_image_url",
+            {
+                "params": {
+                    "style": "logo",
+                    "title": "Narrative",
+                },
+                "base_url": "ftp://example.com",
+            },
+            raise_on_error=False,
+        )
+    )
+
+    assert result.is_error is True
+    assert "base_url must be an absolute http:// or https:// URL" in result.content[0].text
+
+
+@pytest.mark.django_db(transaction=True)
+def test_list_recent_generated_images_requires_and_scopes_by_key():
+    first_user = User.objects.create_user(username="first", email="first@example.com", password="pass123")
+    second_user = User.objects.create_user(username="second", email="second@example.com", password="pass123")
+
+    ImageModel.objects.create(
+        profile=first_user.profile,
+        image_data={"key": first_user.profile.key, "style": "base", "title": "First image"},
+    )
+    ImageModel.objects.create(
+        profile=second_user.profile,
+        image_data={"key": second_user.profile.key, "style": "base", "title": "Second image"},
+    )
+
+    result = _run(_call_tool("list_recent_generated_images", {"key": first_user.profile.key}))
+    missing_key_result = _run(_call_tool("list_recent_generated_images", {}, raise_on_error=False))
+
+    assert result.data["count"] == 1
+    assert result.data["images"][0]["params"]["title"] == "First image"
+    assert missing_key_result.is_error is True
 
 
 @pytest.mark.django_db(transaction=True)
