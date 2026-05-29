@@ -8,17 +8,16 @@ from time import perf_counter
 from typing import Annotated, Any, Literal
 from urllib.parse import urlencode, urlparse
 
-import requests
 from django.db import close_old_connections
 from django.urls import reverse
 from fastmcp import FastMCP
-from PIL import Image as PILImage, UnidentifiedImageError
+from PIL import Image as PILImage
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.image_styles import generate_image_router
 from core.image_utils import get_image_dimensions
 from core.models import Image as ImageModel, Profile
-from core.render_observability import build_render_metrics, classify_render_error
+from core.render_observability import build_render_metrics
 from core.signing import build_signed_params
 from osig.utils import get_osig_logger
 
@@ -32,12 +31,6 @@ STYLE_CHOICES: tuple[StyleName, ...] = ("base", "logo", "job_classic", "job_logo
 SITE_CHOICES: tuple[SiteName, ...] = ("x", "meta")
 FONT_CHOICES: tuple[FontName, ...] = ("helvetica", "markerfelt", "papyrus")
 FORMAT_CHOICES: tuple[OutputFormat, ...] = ("png", "jpeg")
-EXPECTED_RENDER_EXCEPTIONS = (
-    requests.exceptions.RequestException,
-    UnidentifiedImageError,
-    OSError,
-    ValueError,
-)
 
 logger = get_osig_logger(__name__)
 
@@ -160,10 +153,28 @@ def _normalize_base_url(base_url: str) -> str:
     normalized_base_url = base_url.strip().rstrip("/")
     parsed = urlparse(normalized_base_url)
 
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        raise ValueError(f"base_url must be an absolute http:// or https:// URL, got: {base_url!r}")
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.netloc
+        or parsed.path
+        or parsed.params
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError(f"base_url must be an absolute http:// or https:// origin with no path, got: {base_url!r}")
 
     return normalized_base_url
+
+
+def _safe_render_params(render_params: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in render_params.items() if key != "profile_id"}
+
+
+def _profile_for_key(key: str) -> Profile:
+    try:
+        return Profile.objects.only("id", "key").get(key=key)
+    except Profile.DoesNotExist as exc:
+        raise ValueError("No profile exists for the supplied key.") from exc
 
 
 def _summarize_image(image: ImageModel) -> dict[str, Any]:
@@ -254,7 +265,7 @@ def create_mcp() -> FastMCP:
             normalized = _normalize_image_params(params)
             return {
                 "public_params": normalized.public_params,
-                "render_params": normalized.render_params,
+                "render_params": _safe_render_params(normalized.render_params),
                 "warnings": normalized.warnings,
                 "output": {
                     "content_type": normalized.content_type,
@@ -278,7 +289,6 @@ def create_mcp() -> FastMCP:
             encoded_image = base64.b64encode(payload).decode("ascii") if include_image_base64 else ""
 
             response: dict[str, Any] = {
-                "ok": True,
                 "params": normalized.public_params,
                 "warnings": normalized.warnings,
                 "content_type": normalized.content_type,
@@ -289,13 +299,6 @@ def create_mcp() -> FastMCP:
                 response["image_base64"] = encoded_image
                 response["data_uri"] = f"data:{normalized.content_type};base64,{encoded_image}"
             return response
-        except EXPECTED_RENDER_EXCEPTIONS as exc:
-            return {
-                "ok": False,
-                "error_type": classify_render_error(exc),
-                "message": _shorten(str(exc), max_chars=300),
-                "render_ms": int((perf_counter() - started_at) * 1000),
-            }
         finally:
             close_old_connections()
 
@@ -344,7 +347,8 @@ def create_mcp() -> FastMCP:
         """Return capped summaries of generated images scoped to one profile key."""
         close_old_connections()
         try:
-            queryset = ImageModel.objects.filter(image_data__key=key).order_by("-updated_at")
+            profile = _profile_for_key(key)
+            queryset = ImageModel.objects.filter(image_data__key=profile.key).order_by("-updated_at")
             if style:
                 queryset = queryset.filter(image_data__style=style)
 

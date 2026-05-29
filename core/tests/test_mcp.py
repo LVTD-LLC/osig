@@ -4,7 +4,6 @@ import io
 from urllib.parse import parse_qs, urlparse
 
 import pytest
-import requests
 from django.contrib.auth.models import User
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
@@ -55,11 +54,14 @@ def test_mcp_lists_image_iteration_tools():
 
 @pytest.mark.django_db(transaction=True)
 def test_normalize_image_params_maps_logo_alias_to_public_params():
+    user = User.objects.create_user(username="normalizer", email="normalizer@example.com", password="pass123")
+
     result = _run(
         _call_tool(
             "normalize_image_params",
             {
                 "params": {
+                    "key": user.profile.key,
                     "style": "job_logo",
                     "title": "Senior Django Engineer",
                     "image_or_logo": "https://example.com/logo.png",
@@ -69,6 +71,8 @@ def test_normalize_image_params_maps_logo_alias_to_public_params():
     )
 
     assert result.data["public_params"]["image_url"] == "https://example.com/logo.png"
+    assert result.data["public_params"]["key"] == user.profile.key
+    assert "profile_id" not in result.data["render_params"]
     assert result.data["output"]["width"] == 800
     assert result.data["output"]["height"] == 450
 
@@ -97,7 +101,6 @@ def test_render_image_preview_returns_metadata_and_optional_image(monkeypatch):
     data = result.data
     decoded = base64.b64decode(data["image_base64"])
 
-    assert data["ok"] is True
     assert data["content_type"] == "image/png"
     assert data["width"] == 16
     assert data["height"] == 16
@@ -106,29 +109,27 @@ def test_render_image_preview_returns_metadata_and_optional_image(monkeypatch):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_render_image_preview_returns_expected_render_errors(monkeypatch):
+def test_render_image_preview_raises_render_errors(monkeypatch):
     import core.mcp as core_mcp
 
     def unavailable_router(params):
-        raise requests.exceptions.Timeout("upstream timed out")
+        raise ValueError("invalid render input")
 
     monkeypatch.setattr(core_mcp, "generate_image_router", unavailable_router)
 
-    result = _run(
-        _call_tool(
-            "render_image_preview",
-            {
-                "params": {
-                    "style": "base",
-                    "title": "Preview title",
+    with pytest.raises(ToolError):
+        _run(
+            _call_tool(
+                "render_image_preview",
+                {
+                    "params": {
+                        "style": "base",
+                        "title": "Preview title",
+                    },
+                    "include_image_base64": False,
                 },
-                "include_image_base64": False,
-            },
+            )
         )
-    )
-
-    assert result.data["ok"] is False
-    assert result.data["error_type"] == RenderErrorType.TRANSIENT_UPSTREAM_FETCH
 
 
 @pytest.mark.django_db(transaction=True)
@@ -203,7 +204,27 @@ def test_build_signed_image_url_rejects_non_http_base_url():
     )
 
     assert result.is_error is True
-    assert "base_url must be an absolute http:// or https:// URL" in result.content[0].text
+    assert "base_url must be an absolute http:// or https:// origin with no path" in result.content[0].text
+
+
+@pytest.mark.django_db(transaction=True)
+def test_build_signed_image_url_rejects_base_url_paths():
+    result = _run(
+        _call_tool(
+            "build_signed_image_url",
+            {
+                "params": {
+                    "style": "logo",
+                    "title": "Narrative",
+                },
+                "base_url": "https://example.com/nested",
+            },
+            raise_on_error=False,
+        )
+    )
+
+    assert result.is_error is True
+    assert "base_url must be an absolute http:// or https:// origin with no path" in result.content[0].text
 
 
 @pytest.mark.django_db(transaction=True)
