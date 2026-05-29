@@ -45,11 +45,6 @@ dev = [
     "pylint-django>=2.5.3,<3.0.0",
 ]
 
-[tool.uv]
-required-environments = [
-    "sys_platform == 'linux' and platform_machine == 'x86_64'",
-]
-
 [tool.isort]
 profile = "django"
 combine_as_imports = true
