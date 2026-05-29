@@ -12,6 +12,6 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 COPY --from=uv /uv /uvx /bin/
 COPY pyproject.toml uv.lock .python-version ./
-RUN uv sync --locked --no-dev --no-install-project
+RUN uv sync --locked --no-install-project
 
 COPY . .
