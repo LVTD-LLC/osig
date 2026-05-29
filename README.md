@@ -1,5 +1,15 @@
 # OG Image Generator Documentation
 
+## Development
+
+Python dependencies are managed with `uv`. For the Dockerized local stack, run:
+
+```
+make serve
+```
+
+The local backend and worker services use `Dockerfile-python`, and production deploys build one shared image from `deployment/Dockerfile`. At runtime, `APP_PROCESS_TYPE=server` starts Gunicorn and `APP_PROCESS_TYPE=worker` starts Django Q workers. For CapRover, set `APP_PROCESS_TYPE=server` on the `osig` app, `APP_PROCESS_TYPE=worker` on the `osig-workers` app, and the GitHub repository variable `WORKERS_APP_PROCESS_TYPE=worker`.
+
 ## How to use?
 
 The OG Image Generator allows you to create custom Open Graph images for your website. You can specify various parameters to customize the image according to your needs.

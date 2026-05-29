@@ -103,12 +103,12 @@ def _build_meta_tags(signed_url: str, title: str, subtitle: str, page_url: str) 
 
     return "\n".join(
         [
-            f'<meta property="og:type" content="website" />',
+            '<meta property="og:type" content="website" />',
             f'<meta property="og:title" content="{escaped_title}" />',
             f'<meta property="og:description" content="{escaped_subtitle}" />',
             f'<meta property="og:url" content="{escaped_page_url}" />',
             f'<meta property="og:image" content="{escaped_image}" />',
-            f'<meta name="twitter:card" content="summary_large_image" />',
+            '<meta name="twitter:card" content="summary_large_image" />',
             f'<meta name="twitter:title" content="{escaped_title}" />',
             f'<meta name="twitter:description" content="{escaped_subtitle}" />',
             f'<meta name="twitter:image" content="{escaped_image}" />',
@@ -145,7 +145,9 @@ def build_onboarding_meta_tags(request: HttpRequest, data: OnboardingWizardIn):
     return OnboardingWizardOut(
         signed_url=signed_url,
         expires_at=expires_at.isoformat(),
-        meta_tags=_build_meta_tags(signed_url=signed_url, title=data.title, subtitle=data.subtitle, page_url=data.page_url),
+        meta_tags=_build_meta_tags(
+            signed_url=signed_url, title=data.title, subtitle=data.subtitle, page_url=data.page_url
+        ),
         validation_links=_build_validation_links(data.page_url),
     )
 

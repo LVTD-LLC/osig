@@ -107,10 +107,7 @@ def build_render_metrics(*, window_hours: int = 24) -> RenderMetrics:
 
     error_counts = {
         item["error_type"]: item["count"]
-        for item in queryset.filter(success=False)
-        .values("error_type")
-        .annotate(count=Count("id"))
-        .order_by("-count")
+        for item in queryset.filter(success=False).values("error_type").annotate(count=Count("id")).order_by("-count")
     }
 
     return RenderMetrics(

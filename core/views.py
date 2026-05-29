@@ -348,7 +348,9 @@ def generate_image(request):
             async_task(regenerate_and_update_image, existing_image.id, params)
 
         try:
-            return _build_image_response(existing_image.generated_image, output_format, signed_expires_at, usage_state=usage_state)
+            return _build_image_response(
+                existing_image.generated_image, output_format, signed_expires_at, usage_state=usage_state
+            )
         except FileNotFoundError:
             logger.error(f"Generated image file not found for image_id: {existing_image.id}")
 

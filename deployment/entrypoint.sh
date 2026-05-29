@@ -1,38 +1,77 @@
 #!/bin/sh
+set -eu
 
-# Default to server command if no arguments provided
-if [ $# -eq 0 ]; then
-    echo "No arguments provided. Defaulting to running the server."
-    server=true
-else
-    server=false
-fi
-
-# All commands before the conditional ones
 export PROJECT_NAME=osig
 export DJANGO_SETTINGS_MODULE="osig.settings"
+APP_PORT="${PORT:-80}"
+
+process_type="${APP_PROCESS_TYPE:-}"
 
 while getopts ":sw" option; do
     case "${option}" in
-        s)  # Run server
-            server=true
-            ;;
-        w)  # Run worker
-            server=false
-            ;;
-        *)  # Invalid option
+        s) process_type="server" ;;
+        w) process_type="worker" ;;
+        *)
             echo "Invalid option: -$OPTARG" >&2
+            exit 1
             ;;
     esac
 done
 shift $((OPTIND - 1))
 
-# If no valid option provided, default to server
-if [ "$server" = true ]; then
-    python manage.py collectstatic --noinput
-    python manage.py migrate
-    # python manage.py djstripe_sync_models
-    gunicorn ${PROJECT_NAME}.wsgi:application --bind 0.0.0.0:80 --workers 3 --threads 2 --reload
-else
-    python manage.py qcluster
+if [ -z "$process_type" ]; then
+    if [ "${ENVIRONMENT:-}" = "prod" ]; then
+        echo "APP_PROCESS_TYPE must be set to 'server' or 'worker' when ENVIRONMENT=prod." >&2
+        exit 1
+    fi
+
+    process_type="server"
 fi
+
+wait_for_database() {
+    echo "Waiting for database..."
+    uv run --no-sync python - <<'PY'
+import os
+import sys
+import time
+
+import django
+from django.db import connections
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "osig.settings")
+django.setup()
+
+last_error = None
+for attempt in range(1, 61):
+    try:
+        connections["default"].ensure_connection()
+        print("Database is ready.")
+        sys.exit(0)
+    except Exception as exc:
+        last_error = exc
+        print(f"Database unavailable, retrying ({attempt}/60): {exc}", flush=True)
+        time.sleep(2)
+
+print(f"Database did not become ready: {last_error}", file=sys.stderr)
+sys.exit(1)
+PY
+}
+
+wait_for_database
+
+case "$process_type" in
+    server)
+        echo "Starting OSIG server..."
+        uv run --no-sync python manage.py collectstatic --noinput
+        uv run --no-sync python manage.py migrate --noinput
+        exec uv run --no-sync gunicorn ${PROJECT_NAME}.wsgi:application --bind 0.0.0.0:${APP_PORT} --workers 3 --threads 2
+        ;;
+    worker)
+        echo "Starting OSIG workers..."
+        exec uv run --no-sync python manage.py qcluster
+        ;;
+    *)
+        echo "Invalid APP_PROCESS_TYPE: $process_type. Expected 'server' or 'worker'." >&2
+        exit 1
+        ;;
+esac

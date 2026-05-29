@@ -103,9 +103,7 @@ def verify_signed_params(params: Mapping[str, Any], now: datetime | None = None)
     signer = signing.Signer(salt=SIGNING_SALT)
 
     normalized_params: dict[str, str] = {
-        key: str(value)
-        for key, value in params.items()
-        if value is not None and key != SIGNATURE_PARAM
+        key: str(value) for key, value in params.items() if value is not None and key != SIGNATURE_PARAM
     }
 
     payload = build_signature_payload(normalized_params)

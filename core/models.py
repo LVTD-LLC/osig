@@ -20,6 +20,7 @@ def _today():
 def _month_start():
     return _first_of_month(_today())
 
+
 logger = get_osig_logger(__name__)
 
 
@@ -106,7 +107,9 @@ class Image(BaseModel):
 
 
 class RenderAttempt(BaseModel):
-    profile = models.ForeignKey(Profile, null=True, blank=True, on_delete=models.SET_NULL, related_name="render_attempts")
+    profile = models.ForeignKey(
+        Profile, null=True, blank=True, on_delete=models.SET_NULL, related_name="render_attempts"
+    )
     key = models.CharField(max_length=12, blank=True)
     style = models.CharField(max_length=64, blank=True)
     success = models.BooleanField(default=False)
