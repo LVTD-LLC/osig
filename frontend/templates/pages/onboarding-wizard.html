@@ -2,139 +2,192 @@
 {% load webpack_loader static %}
 
 {% block content %}
-<div class="container px-4 py-8 mx-auto">
-  <div class="mx-auto max-w-3xl" data-controller="onboarding-wizard">
-    <h1 class="mb-3 text-3xl font-bold text-center">OG Image Onboarding Wizard</h1>
-    <p class="mb-8 text-center text-gray-600">Go from blank form to publish-ready OG meta tags in 5 steps.</p>
+<section class="site-container py-12 lg:py-16" data-controller="onboarding-wizard">
+  <div class="mb-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+    <div>
+      <p class="page-kicker">Onboarding wizard</p>
+      <h1 class="page-title mt-4">Create signed OG tags in five steps.</h1>
+    </div>
+    <p class="lede">
+      Use this flow when you need the image URL, Open Graph tags, Twitter tags, and validator links together.
+    </p>
+  </div>
 
-    <form data-onboarding-wizard-target="wizardForm" class="space-y-6" novalidate>
-      <section data-onboarding-wizard-target="step" class="space-y-4">
-        <h2 class="text-xl font-semibold">Step 1 · Content destination</h2>
+  <div class="panel grid overflow-hidden lg:grid-cols-[18rem_1fr]">
+    <aside class="border-b border-[var(--osig-line)] bg-[var(--osig-surface-soft)] p-4 lg:border-b-0 lg:border-r">
+      <div class="grid grid-cols-2 gap-2 sm:grid-cols-5 lg:grid-cols-1">
+        <div data-onboarding-wizard-target="progressItem" class="wizard-step-indicator">
+          <span class="step-pill">1</span>
+          <span>Destination</span>
+        </div>
+        <div data-onboarding-wizard-target="progressItem" class="wizard-step-indicator">
+          <span class="step-pill">2</span>
+          <span>Copy</span>
+        </div>
+        <div data-onboarding-wizard-target="progressItem" class="wizard-step-indicator">
+          <span class="step-pill">3</span>
+          <span>Template</span>
+        </div>
+        <div data-onboarding-wizard-target="progressItem" class="wizard-step-indicator">
+          <span class="step-pill">4</span>
+          <span>Output</span>
+        </div>
+        <div data-onboarding-wizard-target="progressItem" class="wizard-step-indicator">
+          <span class="step-pill">5</span>
+          <span>Generate</span>
+        </div>
+      </div>
+      <p class="mt-6 hidden text-sm leading-6 text-[var(--osig-muted)] lg:block">
+        Required fields are checked before the final API call, so you can move through the setup quickly.
+      </p>
+    </aside>
+
+    <form data-onboarding-wizard-target="wizardForm" class="p-5 lg:p-7" novalidate>
+      <section data-onboarding-wizard-target="step" class="space-y-5">
         <div>
-          <label for="page_url" class="block mb-1 text-sm font-medium text-gray-700">Canonical page URL</label>
-          <input id="page_url" data-onboarding-wizard-target="pageUrl" type="url" placeholder="https://example.com/job-offer" class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+          <h2 class="text-2xl font-bold tracking-tight">Where will this preview appear?</h2>
+          <p class="mt-2 text-sm leading-6 text-[var(--osig-muted)]">Use the canonical URL of the page that will contain these tags.</p>
+        </div>
+        <div>
+          <label for="page_url" class="field-label">Canonical page URL</label>
+          <input id="page_url" data-onboarding-wizard-target="pageUrl" type="url" placeholder="https://example.com/job-offer" class="field" />
         </div>
         <div class="flex justify-end">
-          <button type="button" data-action="onboarding-wizard#goNext" class="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Next</button>
+          <button type="button" data-action="onboarding-wizard#goNext" class="btn-primary">Continue to copy</button>
         </div>
       </section>
 
-      <section data-onboarding-wizard-target="step" class="hidden space-y-4">
-        <h2 class="text-xl font-semibold">Step 2 · Core OG copy</h2>
+      <section data-onboarding-wizard-target="step" class="hidden space-y-5">
         <div>
-          <label for="title" class="block mb-1 text-sm font-medium text-gray-700">Title</label>
-          <input id="title" data-onboarding-wizard-target="title" type="text" placeholder="Hiring: Senior Backend Engineer" class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+          <h2 class="text-2xl font-bold tracking-tight">Write the social preview copy.</h2>
+          <p class="mt-2 text-sm leading-6 text-[var(--osig-muted)]">Keep the title direct. Use the subtitle for context that helps someone decide to click.</p>
         </div>
         <div>
-          <label for="subtitle" class="block mb-1 text-sm font-medium text-gray-700">Subtitle</label>
-          <textarea id="subtitle" data-onboarding-wizard-target="subtitle" rows="3" placeholder="Build reliable services with Django + Postgres." class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+          <label for="title" class="field-label">Title</label>
+          <input id="title" data-onboarding-wizard-target="title" type="text" placeholder="Hiring: Senior Backend Engineer" class="field" />
         </div>
         <div>
-          <label for="eyebrow" class="block mb-1 text-sm font-medium text-gray-700">Eyebrow</label>
-          <input id="eyebrow" data-onboarding-wizard-target="eyebrow" type="text" placeholder="Remote · Full-time" class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+          <label for="subtitle" class="field-label">Subtitle</label>
+          <textarea id="subtitle" data-onboarding-wizard-target="subtitle" rows="3" placeholder="Build reliable services with Django and Postgres." class="field"></textarea>
         </div>
-        <div class="flex justify-between">
-          <button type="button" data-action="onboarding-wizard#goPrevious" class="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">Back</button>
-          <button type="button" data-action="onboarding-wizard#goNext" class="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Next</button>
+        <div>
+          <label for="eyebrow" class="field-label">Eyebrow</label>
+          <input id="eyebrow" data-onboarding-wizard-target="eyebrow" type="text" placeholder="Remote · Full-time" class="field" />
+        </div>
+        <div class="flex justify-between gap-3">
+          <button type="button" data-action="onboarding-wizard#goPrevious" class="btn-secondary">Back</button>
+          <button type="button" data-action="onboarding-wizard#goNext" class="btn-primary">Continue to template</button>
         </div>
       </section>
 
-      <section data-onboarding-wizard-target="step" class="hidden space-y-4">
-        <h2 class="text-xl font-semibold">Step 3 · Image & template</h2>
+      <section data-onboarding-wizard-target="step" class="hidden space-y-5">
         <div>
-          <label for="site" class="block mb-1 text-sm font-medium text-gray-700">Social image size</label>
-          <select id="site" data-onboarding-wizard-target="site" class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-            <option value="x">X / Twitter (1600 x 900)</option>
-            <option value="meta">Meta (1200 x 630)</option>
-          </select>
+          <h2 class="text-2xl font-bold tracking-tight">Choose the image shape.</h2>
+          <p class="mt-2 text-sm leading-6 text-[var(--osig-muted)]">Pick the target network size, template, font, and optional image source.</p>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-3">
+          <div>
+            <label for="site" class="field-label">Social image size</label>
+            <select id="site" data-onboarding-wizard-target="site" class="field">
+              <option value="x">X / Twitter (1600 x 900)</option>
+              <option value="meta">Meta (1200 x 630)</option>
+            </select>
+          </div>
+          <div>
+            <label for="style" class="field-label">Template</label>
+            <select id="style" data-onboarding-wizard-target="style" class="field">
+              <option value="base">Base</option>
+              <option value="logo">Logo</option>
+              <option value="job_classic">Job Classic</option>
+              <option value="job_logo">Job Logo</option>
+              <option value="job_clean">Job Clean</option>
+            </select>
+          </div>
+          <div>
+            <label for="font" class="field-label">Font</label>
+            <select id="font" data-onboarding-wizard-target="font" class="field">
+              <option value="helvetica">Helvetica</option>
+              <option value="markerfelt">Marker Felt</option>
+              <option value="papyrus">Papyrus</option>
+            </select>
+          </div>
         </div>
         <div>
-          <label for="style" class="block mb-1 text-sm font-medium text-gray-700">Style</label>
-          <select id="style" data-onboarding-wizard-target="style" class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-            <option value="base">Base</option>
-            <option value="logo">Logo</option>
-            <option value="job_classic">Job Classic</option>
-            <option value="job_logo">Job Logo</option>
-            <option value="job_clean">Job Clean</option>
-          </select>
+          <label for="image_url" class="field-label">Image or logo URL</label>
+          <input id="image_url" data-onboarding-wizard-target="imageUrl" type="url" placeholder="https://example.com/logo-or-cover.png" class="field" />
+          <p class="field-help">Job templates can use a company logo or a brand image in this field.</p>
         </div>
-        <div>
-          <label for="font" class="block mb-1 text-sm font-medium text-gray-700">Font</label>
-          <select id="font" data-onboarding-wizard-target="font" class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-            <option value="helvetica">Helvetica</option>
-            <option value="markerfelt">Marker Felt</option>
-            <option value="papyrus">Papyrus</option>
-          </select>
-        </div>
-        <div>
-          <label for="image_url" class="block mb-1 text-sm font-medium text-gray-700">Image / logo URL</label>
-          <input id="image_url" data-onboarding-wizard-target="imageUrl" type="url" placeholder="https://example.com/logo-or-cover.png" class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
-          <p class="mt-1 text-sm text-gray-500">For job styles you can pass a logo or brand image in this field.</p>
-        </div>
-        <div class="flex justify-between">
-          <button type="button" data-action="onboarding-wizard#goPrevious" class="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">Back</button>
-          <button type="button" data-action="onboarding-wizard#goNext" class="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Next</button>
+        <div class="flex justify-between gap-3">
+          <button type="button" data-action="onboarding-wizard#goPrevious" class="btn-secondary">Back</button>
+          <button type="button" data-action="onboarding-wizard#goNext" class="btn-primary">Continue to output</button>
         </div>
       </section>
 
-      <section data-onboarding-wizard-target="step" class="hidden space-y-4">
-        <h2 class="text-xl font-semibold">Step 4 · Output controls</h2>
+      <section data-onboarding-wizard-target="step" class="hidden space-y-5">
         <div>
-          <label for="format" class="block mb-1 text-sm font-medium text-gray-700">Output format</label>
-          <select id="format" data-onboarding-wizard-target="format" class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-            <option value="png">PNG</option>
-            <option value="jpeg">JPEG</option>
-          </select>
+          <h2 class="text-2xl font-bold tracking-tight">Set output controls.</h2>
+          <p class="mt-2 text-sm leading-6 text-[var(--osig-muted)]">Use defaults unless your publishing system needs a specific file type or size.</p>
         </div>
-        <div>
-          <label for="quality" class="block mb-1 text-sm font-medium text-gray-700">JPEG quality (1-100)</label>
-          <input id="quality" data-onboarding-wizard-target="quality" type="number" min="1" max="100" placeholder="85" class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
-          <p class="mt-1 text-sm text-gray-500">Only used when format = JPEG. Leave blank to use default quality.</p>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label for="format" class="field-label">Output format</label>
+            <select id="format" data-onboarding-wizard-target="format" class="field">
+              <option value="png">PNG</option>
+              <option value="jpeg">JPEG</option>
+            </select>
+          </div>
+          <div>
+            <label for="quality" class="field-label">JPEG quality</label>
+            <input id="quality" data-onboarding-wizard-target="quality" type="number" min="1" max="100" placeholder="85" class="field" />
+            <p class="field-help">Only used for JPEG output.</p>
+          </div>
+          <div>
+            <label for="max_kb" class="field-label">Max KB</label>
+            <input id="max_kb" data-onboarding-wizard-target="maxKb" type="number" min="1" placeholder="Optional" class="field" />
+            <p class="field-help">Best-effort size target.</p>
+          </div>
+          <div>
+            <label for="version" class="field-label">Cache version</label>
+            <input id="version" data-onboarding-wizard-target="version" type="text" placeholder="v2026-06-05" class="field" />
+            <p class="field-help">Change this when preview content changes.</p>
+          </div>
         </div>
-        <div>
-          <label for="max_kb" class="block mb-1 text-sm font-medium text-gray-700">Max KB (optional)</label>
-          <input id="max_kb" data-onboarding-wizard-target="maxKb" type="number" min="1" placeholder="0" class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
-          <p class="mt-1 text-sm text-gray-500">Optional size target for signed image generation.</p>
-        </div>
-        <div>
-          <label for="version" class="block mb-1 text-sm font-medium text-gray-700">Cache version</label>
-          <input id="version" data-onboarding-wizard-target="version" type="text" placeholder="e.g. v2026" class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
-          <p class="mt-1 text-sm text-gray-500">Update this value when source content changes to bust cached image URLs.</p>
-        </div>
-        <div class="flex justify-between">
-          <button type="button" data-action="onboarding-wizard#goPrevious" class="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">Back</button>
-          <button type="button" data-action="onboarding-wizard#goNext" class="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Next</button>
+        <div class="flex justify-between gap-3">
+          <button type="button" data-action="onboarding-wizard#goPrevious" class="btn-secondary">Back</button>
+          <button type="button" data-action="onboarding-wizard#goNext" class="btn-primary">Review and generate</button>
         </div>
       </section>
 
-      <section data-onboarding-wizard-target="step" class="hidden space-y-4">
-        <h2 class="text-xl font-semibold">Step 5 · Generate</h2>
-        <p class="text-sm text-gray-600">Sign your image URL, get ready-to-copy OG tags, and open validator links.</p>
+      <section data-onboarding-wizard-target="step" class="hidden space-y-5">
+        <div>
+          <h2 class="text-2xl font-bold tracking-tight">Generate signed metadata.</h2>
+          <p class="mt-2 text-sm leading-6 text-[var(--osig-muted)]">This creates a signed image URL, copy-ready tags, and links to social preview validators.</p>
+        </div>
 
-        <button type="button" data-action="onboarding-wizard#generate" class="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Generate OG meta</button>
+        <button type="button" data-action="onboarding-wizard#generate" class="btn-primary">Generate OG tags</button>
 
-        <div class="mt-2">
-          <label for="meta_tags" class="block mb-1 text-sm font-medium text-gray-700">Copy-ready meta tags</label>
-          <textarea id="meta_tags" data-onboarding-wizard-target="metaTags" rows="12" readonly class="px-3 py-2 w-full rounded-md border border-gray-200 bg-gray-50 font-mono text-sm" placeholder="Generated tags will appear here"></textarea>
-          <div class="mt-3 flex gap-2">
-            <button type="button" data-action="onboarding-wizard#copyMetaTags" class="px-4 py-2 text-white bg-gray-800 rounded-md hover:bg-gray-900">Copy</button>
-            <a href="#" data-onboarding-wizard-target="previewLink" target="_blank" rel="noopener" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100">Preview image</a>
+        <div>
+          <label for="meta_tags" class="field-label">Copy-ready meta tags</label>
+          <textarea id="meta_tags" data-onboarding-wizard-target="metaTags" rows="12" readonly class="copy-field" placeholder="Generated tags will appear here"></textarea>
+          <div class="mt-3 flex flex-col gap-3 sm:flex-row">
+            <button type="button" data-action="onboarding-wizard#copyMetaTags" class="btn-secondary">Copy meta tags</button>
+            <a href="#" data-onboarding-wizard-target="previewLink" target="_blank" rel="noopener" aria-disabled="true" class="btn-secondary hidden">Open preview image</a>
           </div>
         </div>
 
-        <div>
-          <h3 class="mb-2 text-sm font-semibold text-gray-700">Validation checklist</h3>
-          <div data-onboarding-wizard-target="validationLinks" class="space-y-2"></div>
+        <div class="panel-soft p-4">
+          <h3 class="text-sm font-bold text-[var(--osig-ink)]">Validation links</h3>
+          <div data-onboarding-wizard-target="validationLinks" class="mt-3 flex flex-wrap gap-3"></div>
         </div>
 
-        <p data-onboarding-wizard-target="errorMessage" class="text-sm text-red-600"></p>
+        <p data-onboarding-wizard-target="errorMessage" class="text-sm font-semibold text-[var(--osig-danger)]"></p>
 
-        <div class="flex justify-between">
-          <button type="button" data-action="onboarding-wizard#goPrevious" class="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">Back</button>
-          <button type="button" data-action="onboarding-wizard#reset" class="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700">Start over</button>
+        <div class="flex justify-between gap-3">
+          <button type="button" data-action="onboarding-wizard#goPrevious" class="btn-secondary">Back</button>
+          <button type="button" data-action="onboarding-wizard#reset" class="btn-danger">Start over</button>
         </div>
       </section>
     </form>
   </div>
-</div>
+</section>
 {% endblock content %}

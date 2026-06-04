@@ -26,92 +26,160 @@
 {% endblock meta %}
 
 {% block content %}
-<div class="container px-4 py-8 mx-auto md:relative">
-  <div class="mx-auto max-w-3xl">
-    <h1 class="mb-8 text-3xl font-bold text-center">OG Image Generator
-    <span class="block text-blue-600">Documentation</span>
-    </h1>
-
-    <div class="mt-10">
-      <h2 class="pb-2 my-4 text-3xl font-semibold border-b border-gray-200">Overview</h2>
-      <p class="mb-4">The OG Image Generator allows you to create custom Open Graph images for your website. You can specify various parameters to customize the image according to your needs.</p>
+<section class="site-container grid gap-8 py-12 lg:grid-cols-[0.75fr_1.25fr] lg:py-16">
+  <aside class="hidden lg:block">
+    <div class="sticky top-24 space-y-2 text-sm">
+      <a href="#endpoint" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Endpoint</a>
+      <a href="#parameters" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Parameters</a>
+      <a href="#examples" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Examples</a>
+      <a href="#output-controls" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Output controls</a>
+      <a href="#signed-urls" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Signed URLs</a>
+      <a href="#mcp" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Using the MCP</a>
+      <a href="#meta-tags" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Meta tags</a>
+      <a href="#validation" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Validation</a>
     </div>
+  </aside>
 
-    <div class="mt-10">
-      <h2 class="pb-2 my-4 text-3xl font-semibold border-b border-gray-200">URL</h2>
-      <p class="mb-4">The url for all images will be the same:</p>
-      <code class="block p-4 bg-gray-100 rounded-md">
-        https://osig.app/g/
-      </code>
-    </div>
+  <div class="min-w-0">
+    <p class="page-kicker">Docs</p>
+    <h1 class="page-title mt-4">Publish OG images.</h1>
+    <p class="lede mt-6 max-w-3xl">
+      Use the generator for one image, or call the endpoint directly from your site. Most previews need a title, subtitle, template, and optional image URL.
+    </p>
 
-    <div class="mt-10">
-      <h2 class="pb-2 my-4 text-3xl font-semibold border-b border-gray-200">Parameters</h2>
-      <p class="mb-4">Parameters vary by style. All of them are optional, but a title and subtitle usually produce a better preview.</p>
+    <div class="doc-prose mt-10">
+      <h2 id="endpoint">Endpoint</h2>
+      <p>All generated images are served from the same endpoint.</p>
+      <pre class="code-block"><code>https://osig.app/g</code></pre>
 
+      <h2 id="parameters">Parameters</h2>
+      <p>Parameters vary by template. Empty values still render, but useful text and an image source usually produce a better preview.</p>
+
+      <div class="not-prose overflow-x-auto rounded-lg border border-[var(--osig-line)] bg-white">
+        <table class="min-w-full divide-y divide-[var(--osig-line)] text-left text-sm">
+          <thead class="bg-[var(--osig-surface-soft)] text-[var(--osig-muted)]">
+            <tr>
+              <th class="px-4 py-3 font-bold">Name</th>
+              <th class="px-4 py-3 font-bold">Use</th>
+              <th class="px-4 py-3 font-bold">Common values</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--osig-line)] text-[var(--osig-muted)]">
+            <tr>
+              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">style</td>
+              <td class="px-4 py-3">Template to render.</td>
+              <td class="px-4 py-3">base, logo, job_classic, job_logo, job_clean</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">site</td>
+              <td class="px-4 py-3">Output dimensions.</td>
+              <td class="px-4 py-3">x: 1600 x 900, meta: 1200 x 630</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">font</td>
+              <td class="px-4 py-3">Font used for image text.</td>
+              <td class="px-4 py-3">helvetica, markerfelt, papyrus</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">title</td>
+              <td class="px-4 py-3">Main headline.</td>
+              <td class="px-4 py-3">Article title, job title, product name</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">subtitle</td>
+              <td class="px-4 py-3">Supporting text, truncated when needed.</td>
+              <td class="px-4 py-3">Summary, role detail, short description</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">eyebrow</td>
+              <td class="px-4 py-3">Small context label inside the generated image.</td>
+              <td class="px-4 py-3">Article, Remote, Launch, Guide</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">image_url</td>
+              <td class="px-4 py-3">Background image or logo URL.</td>
+              <td class="px-4 py-3">Public image URL</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">key</td>
+              <td class="px-4 py-3">Authenticated profile key from settings.</td>
+              <td class="px-4 py-3">Your OSIG token</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="examples">Examples</h2>
+
+      <h3 id="base">Base style</h3>
+      <p>Use the base style for articles, tutorials, essays, and general pages that have a strong cover image.</p>
       <img
-        src="{% static 'vendors/images/no-params-example.png' %}"
-        class="mb-4 rounded-md"
-        alt="OG Image Generator Parameters"
-        width="797"
-        height="447"
+        src="{% static 'vendors/images/base-example.png' %}"
+        alt="Base OG image example"
+        width="800"
+        height="450"
         loading="lazy"
         decoding="async"
       />
+      <pre class="code-block"><code>https://osig.app/g?
+  site=x
+  &amp;style=base
+  &amp;font=helvetica
+  &amp;title=10 Years of Great Books
+  &amp;subtitle=I'm starting a 10 Year Reading Plan.
+  &amp;eyebrow=Article
+  &amp;image_url=https://example.com/cover.png</code></pre>
 
-      <p class="mb-4">Below is a list of all parameters we currently support:</p>
+      <h3 id="logo">Logo style</h3>
+      <p>Use the logo style for companies, projects, job posts, and pages where a brand mark matters more than a full background image.</p>
+      <img
+        src="{% static 'vendors/images/logo-example.png' %}"
+        alt="Logo OG image example"
+        width="796"
+        height="445"
+        loading="lazy"
+        decoding="async"
+      />
+      <pre class="code-block"><code>https://osig.app/g?
+  site=x
+  &amp;style=logo
+  &amp;font=markerfelt
+  &amp;title=Narrative
+  &amp;subtitle=Founding Senior Software Engineer
+  &amp;image_url=https://example.com/logo.png</code></pre>
 
-      <ul class="space-y-2 list-disc list-inside">
-        <li><strong>key</strong>: Your API key. Can be found in your <a href="{% url 'settings' %}" class="text-blue-500 underline">settings</a> page, if you are registered.</li>
-        <li>
-          <strong>style</strong>: Image style (default: "base")
-          <ul class="mt-2 ml-6 space-y-1">
-            <li>- <a class="link" href="#base">base</a></li>
-            <li>- <a class="link" href="#logo">logo</a></li>
-          </ul>
-        </li>
-        <li>
-          <strong>site</strong>: This dictates the size of the image (default: "x")
-          <ul class="mt-2 ml-6 space-y-1">
-            <li>- x (1600 by 900)</li>
-            <li>- meta (1200 by 630)</li>
-          </ul>
-        </li>
-        <li>
-          <strong>font</strong>: Font to use for text (more will be added)
-          <ul class="mt-2 ml-6 space-y-1">
-            <li>- <a class="link" href="#Helvetica">helvetica</a></li>
-            <li>- <a class="link" href="#Markerfelt">markerfelt</a></li>
-            <li>- <a class="link" href="#Papyrus">papyrus</a></li>
-          </ul>
-        </li>
-        <li><strong>title</strong>: Main title text</li>
-        <li><strong>subtitle</strong>: Subtitle text</li>
-        <li><strong>eyebrow</strong>: Eyebrow text</li>
-        <li><strong>image_url</strong>: URL of the background image</li>
+      <h2 id="output-controls">Output controls</h2>
+      <p>Use output controls when your publishing platform needs JPEG output or a smaller file.</p>
+      <ul>
+        <li><strong>format</strong>: png or jpeg. The default is png.</li>
+        <li><strong>quality</strong>: 1 to 100. JPEG defaults to 85 when omitted.</li>
+        <li><strong>max_kb</strong>: best-effort file size target, currently tuned for JPEG.</li>
+        <li><strong>v</strong>: cache-busting version token. Change this when preview content changes.</li>
       </ul>
-    </div>
 
-    <div class="mt-10">
-      <h2 class="pb-2 my-4 text-3xl font-semibold border-b border-gray-200">Usage</h2>
-      <p class="mb-4">The url for all images will be the same:</p>
-      <pre><code class="block p-4 bg-gray-100 rounded-md">&lt;meta name="twitter:card" content="summary_large_image" /&gt;
-&lt;meta name="twitter:image" content="{ generated_image_url }"/&gt;</code></pre>
-    </div>
+      <h2 id="signed-urls">Signed URLs</h2>
+      <p>Signed URLs protect generated previews from tampering. Send the desired image parameters to the signing endpoint and embed the returned URL.</p>
+      <pre class="code-block"><code>POST /api/sign
+{
+  "params": {
+    "style": "logo",
+    "site": "x",
+    "title": "Narrative",
+    "format": "jpeg",
+    "quality": 80
+  },
+  "expires_in_seconds": 3600
+}</code></pre>
 
-    <div class="mt-10">
-      <h2 class="pb-2 my-4 text-3xl font-semibold border-b border-gray-200">Using the MCP</h2>
-      <p class="mb-4">OSIG also exposes a Model Context Protocol server for agent clients that need to inspect image options, render previews, and build signed image URLs.</p>
-
-      <ol class="space-y-3 list-decimal list-inside">
-        <li><strong>Get your profile key</strong> from the <a href="{% url 'settings' %}" class="text-blue-500 underline">settings</a> page.</li>
-        <li><strong>Connect your MCP client</strong> to the hosted Streamable HTTP endpoint: <code class="px-1 py-0.5 bg-gray-100 rounded">https://osig.app/mcp/</code></li>
-        <li><strong>Authenticate requests</strong> with either <code class="px-1 py-0.5 bg-gray-100 rounded">X-API-Key: &lt;profile-key&gt;</code> or <code class="px-1 py-0.5 bg-gray-100 rounded">Authorization: Bearer &lt;profile-key&gt;</code>.</li>
-        <li><strong>Start with <code>get_image_generation_contract</code></strong> to see the available styles, fields, dimensions, and recommended workflow.</li>
+      <h2 id="mcp">Using the MCP</h2>
+      <p>OSIG exposes a Model Context Protocol server for agent clients that need to inspect options, render previews, and build signed image URLs.</p>
+      <ol>
+        <li>Get your profile key from the <a class="link" href="{% url 'settings' %}">settings page</a>.</li>
+        <li>Connect your MCP client to <code>https://osig.app/mcp/</code>.</li>
+        <li>Authenticate with <code>X-API-Key: &lt;profile-key&gt;</code> or <code>Authorization: Bearer &lt;profile-key&gt;</code>.</li>
+        <li>Call <code>get_image_generation_contract</code> first to inspect styles, fields, dimensions, and the recommended workflow.</li>
       </ol>
-
-      <p class="mt-4 mb-4">If your MCP client accepts a JSON-style server definition, the hosted connection looks like this:</p>
-      <pre class="block overflow-x-auto p-4 bg-gray-100 rounded-md"><code>{
+      <pre class="code-block"><code>{
   "mcpServers": {
     "osig": {
       "url": "https://osig.app/mcp/",
@@ -121,143 +189,69 @@
     }
   }
 }</code></pre>
+      <p>A useful agent workflow is to normalize parameters, render previews while iterating, build a signed URL, then place that URL in your Open Graph and Twitter image tags.</p>
+      <pre class="code-block"><code>normalize_image_params
+render_image_preview
+build_signed_image_url</code></pre>
+      <p>For local development with this repository checked out, run the stdio server.</p>
+      <pre class="code-block"><code>uv run python mcp_server.py</code></pre>
 
-      <p class="mt-4 mb-4">A good agent workflow is:</p>
-      <ul class="space-y-2 list-disc list-inside">
-        <li>Call <code>normalize_image_params</code> to canonicalize style, font, size, and text fields.</li>
-        <li>Call <code>render_image_preview</code> while iterating on title, subtitle, eyebrow, and image URL.</li>
-        <li>Call <code>build_signed_image_url</code> when the preview is ready to publish.</li>
-        <li>Use the signed URL in your Open Graph and Twitter image tags.</li>
-      </ul>
+      <h2 id="meta-tags">Meta tags</h2>
+      <p>Use the generated image URL in Open Graph and Twitter card metadata.</p>
+      <pre class="code-block"><code>&lt;meta property="og:image" content="{ generated_image_url }" /&gt;
+&lt;meta name="twitter:card" content="summary_large_image" /&gt;
+&lt;meta name="twitter:image" content="{ generated_image_url }" /&gt;</code></pre>
 
-      <p class="mt-4 mb-4">For local development with the repository checked out, run the stdio server instead:</p>
-      <pre class="block overflow-x-auto p-4 bg-gray-100 rounded-md"><code>uv run python mcp_server.py</code></pre>
-    </div>
-
-    <div class="mt-10">
-      <h2 class="pb-2 my-4 text-3xl font-semibold border-b border-gray-200">Examples</h2>
-
-      <h3 id="base" class="pb-2 text-2xl font-semibold">Base Style</h3>
-      <p class="mb-4">This is useful for general pages like Articles, Tutorial, News pages. Pro tip, you can generate the background image using AI. Those work super well.</p>
-      <p class="mb-4">Here is what gets generated for my site's articles:</p>
-      <img
-      src="{% static 'vendors/images/base-example.png' %}"
-      class="mb-4 rounded-md"
-      alt="Base OG Image Example"
-      width="800"
-      height="450"
-      loading="lazy"
-      decoding="async"
-      />
-
-      <p class="mb-4">This is the URL that generates the image:</p>
-      <pre class="block overflow-x-auto p-4 bg-gray-100 rounded-md"><code>https://osig.app/g?
-  site=x
-  &style=base
-  &font=helvetica
-  &title=10 Years of Great Books
-  &subtitle=I'm starting a 10 Year Reading Plan proposed in the 1st Volume (The Great Conversation) of the "Great Books of the Western World" series.
-  &eyebrow=Article
-  &image_url=https://www.rasulkireev.com/_astro/a_smiling_boy_from_Pixars_Coco.DrP3G0Ol.png</code></pre>
-
-      <h3 id="logo" class="pb-2 mt-6 text-2xl font-semibold">Logo Style</h3>
-      <p class="mb-4">Logo style is useful when you want to highlight a company, a project, a job posting, or another branded page.</p>
-      <p class="mb-4">Here is how I use it for one of my job boards:</p>
-      <img
-        src="{% static 'vendors/images/logo-example.png' %}"
-        class="mb-4 rounded-md"
-        alt="Logo OG Image Example"
-        width="796"
-        height="445"
-        loading="lazy"
-        decoding="async"
-      />
-
-      <p class="mb-4">This is the URL that generates the image:</p>
-      <pre class="block overflow-x-auto p-4 bg-gray-100 rounded-md"><code>https://osig.app/g?
-  site=x
-  &style=logo
-  &font=markerfelt
-  &title=Narrative
-  &subtitle=Founding Senior Software Engineer
-  &image_url=http://res.cloudinary.com/built-with-django/image/upload/v1728024021/user-profile-image-prod/hhxfplsthiaytuttoamc.jpg</code></pre>
-    </div>
-
-    <div class="mt-10">
-      <h2 class="pb-2 my-4 text-3xl font-semibold border-b border-gray-200">Fonts</h2>
-      <ul class="space-y-2 list-disc list-inside">
-        <li id="Helvetica">
-          Helvetica
+      <h2>Fonts</h2>
+      <div class="not-prose grid gap-4 sm:grid-cols-3">
+        <div class="panel p-4">
+          <p class="mb-3 text-sm font-bold text-[var(--osig-ink)]">Helvetica</p>
           <img
             src="{% static 'vendors/images/helvetica-example.png' %}"
-            class="mb-4 rounded-md"
-            alt="Helvetica Font Example"
+            alt="Helvetica font example"
             width="365"
             height="96"
             loading="lazy"
             decoding="async"
           />
-        </li>
-        <li id="Markerfelt">
-          Markerfelt
+        </div>
+        <div class="panel p-4">
+          <p class="mb-3 text-sm font-bold text-[var(--osig-ink)]">Marker Felt</p>
           <img
             src="{% static 'vendors/images/markerfelt-example.png' %}"
-            class="mb-4 rounded-md"
-            alt="Markerfelt Font Example"
+            alt="Marker Felt font example"
             width="362"
             height="98"
             loading="lazy"
             decoding="async"
           />
-        </li>
-        <li id="Papyrus">
-          Papyrus
+        </div>
+        <div class="panel p-4">
+          <p class="mb-3 text-sm font-bold text-[var(--osig-ink)]">Papyrus</p>
           <img
             src="{% static 'vendors/images/papyrus-example.png' %}"
-            class="mb-4 rounded-md"
-            alt="Papyrus Font Example"
+            alt="Papyrus font example"
             width="276"
             height="88"
             loading="lazy"
             decoding="async"
           />
-        </li>
+        </div>
+      </div>
+
+      <h2 id="validation">Validation checklist</h2>
+      <ul>
+        <li>Bump <strong>v</strong> when image content changes.</li>
+        <li>Regenerate a signed URL if signed parameters changed.</li>
+        <li>Deploy metadata with the new image URL.</li>
+        <li>Open social validators before sharing the page.</li>
       </ul>
+      <p>
+        Start with the <a class="link" href="{% url 'onboarding_wizard' %}">onboarding wizard</a> when you want OSIG to generate meta tags and validation links for you.
+      </p>
     </div>
-
-    <div class="mt-10">
-      <h2 class="pb-2 my-4 text-3xl font-semibold border-b border-gray-200">Precautions</h2>
-      <p>Once you insert this link on your site, make sure to test it before sharing links online. I like to use <a class="link" href="https://threadcreator.com/tools/twitter-card-validator">this Twitter Card Validator</a></p>
-    </div>
-
-    <div class="mt-10">
-      <h2 class="pb-2 my-4 text-3xl font-semibold border-b border-gray-200">Notes</h2>
-      <ul class="space-y-2 list-disc list-inside">
-        <li>Subtitle text is truncated to 150 characters if longer.</li>
-        <li>You can remove the watermark by subscribing to the <a class="link" href="{% url 'pricing' %}">PRO version</a>.</li>
-      </ul>
-    </div>
-
-    <div class="mt-10">
-      <h2 class="pb-2 my-4 text-3xl font-semibold border-b border-gray-200">Integrating into your Site</h2>
-      <p>As people use this, I will start adding more specific instructions on how to add these to your specific site that might use different technologies:</p>
-      <ul class="mt-4 space-y-2 list-disc list-inside">
-        <li>Wordpress</li>
-        <li>Django</li>
-        <li>Astro</li>
-        <li>Ruby on Rails</li>
-        <li>Next.js</li>
-        <li>etc.</li>
-      </ul>
-    </div>
-
-    <div class="mt-10">
-      <h2 class="pb-2 my-4 text-3xl font-semibold border-b border-gray-200">API</h2>
-      <p>I will be adding more instruction on how you can generate those images programmatically via an API soon.</p>
-    </div>
-
   </div>
-</div>
+</section>
 {% endblock content %}
 
 {% block schema %}

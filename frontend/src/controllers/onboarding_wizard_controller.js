@@ -22,6 +22,7 @@ export default class extends Controller {
     "previewLink",
     "errorMessage",
     "wizardForm",
+    "progressItem",
   ];
 
   connect() {
@@ -51,7 +52,11 @@ export default class extends Controller {
       step.classList.toggle("hidden", index !== this.currentStep);
     });
 
-    if (this.errorMessageTarget) {
+    this.progressItemTargets.forEach((item, index) => {
+      item.classList.toggle("is-active", index === this.currentStep);
+    });
+
+    if (this.hasErrorMessageTarget) {
       this.errorMessageTarget.textContent = "";
     }
   }
@@ -80,6 +85,8 @@ export default class extends Controller {
       const data = await response.json();
       this.metaTagsTarget.value = data.meta_tags;
       this.previewLinkTarget.href = data.signed_url;
+      this.previewLinkTarget.classList.remove("hidden");
+      this.previewLinkTarget.removeAttribute("aria-disabled");
       this.renderValidationLinks(data.validation_links);
     } catch (error) {
       this.setError(error.message || "Unable to generate onboarding artifacts.");
@@ -102,6 +109,8 @@ export default class extends Controller {
     this.currentStep = 0;
     this.metaTagsTarget.value = "";
     this.previewLinkTarget.href = "#";
+    this.previewLinkTarget.classList.add("hidden");
+    this.previewLinkTarget.setAttribute("aria-disabled", "true");
     this.validationLinksTarget.innerHTML = "";
     this.clearError();
     this.updateStepVisibility();
@@ -153,12 +162,10 @@ export default class extends Controller {
       link.href = href;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
-      link.className = "inline-block mr-3 text-sm text-blue-600 underline";
+      link.className = "btn-secondary min-h-0 px-3 py-2";
       link.textContent = name;
 
-      const wrapper = document.createElement("div");
-      wrapper.appendChild(link);
-      this.validationLinksTarget.appendChild(wrapper);
+      this.validationLinksTarget.appendChild(link);
     });
   }
 

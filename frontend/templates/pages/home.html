@@ -2,105 +2,229 @@
 {% load webpack_loader static %}
 
 {% block content %}
-<div class="container px-4 py-8 mx-auto md:relative">
-  <div class="mx-auto max-w-3xl">
-    <h1 class="mb-4 text-3xl font-bold text-center">Generate Open Graph Images for
-      <span class="block text-blue-600">Your Site</span>
-    </h1>
-    <p class="mx-auto max-w-2xl text-base leading-7 text-center text-gray-600">
-      Create branded social preview images for Open Graph and Twitter cards from a shareable URL.
+<section class="site-container grid gap-10 py-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:py-16">
+  <div>
+    <p class="page-kicker">Open Graph image generator</p>
+    <h1 class="page-title mt-4">Generate social preview images from a URL.</h1>
+    <p class="lede mt-6 max-w-2xl">
+      OSIG turns titles, subtitles, logos, and cover images into Open Graph and Twitter card images you can paste into any site.
     </p>
-    <div class="flex flex-col gap-x-6 justify-center items-center mt-10 md:flex-row md:items-end">
-      <a
-        class="block px-3 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-        href="{% url 'account_signup' %}"
-      >
-        Get Started
-      </a>
-      <span class="pb-1 font-bold">or try the generator below</span>
+    <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+      <a href="#generator" class="btn-primary">Open generator</a>
+      <a href="{% url 'how_to' %}" class="btn-secondary">Read docs</a>
     </div>
-
-    <div
-      data-controller="image-generator"
-      class="flex flex-col gap-8 mt-10 md:flex-row"
-      data-image-generator-user-key-value="{{ user_key|default:'' }}"
-    >
-      <div class="w-full md:relative md:w-1/2">
-        <form data-action="submit->image-generator#generate" class="space-y-4">
-          {% csrf_token %}
-          <div>
-            <label for="site" class="block mb-1 text-sm font-medium text-gray-700">Size</label>
-            <select id="site" name="site" class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-              {% for value, label in site_choices %}
-                <option value="{{ value }}">{{ label }}</option>
-              {% endfor %}
-            </select>
-          </div>
-
-          <div class="md:relative">
-            <label for="style" class="block mb-1 text-sm font-medium text-gray-700">Style</label>
-            <select id="style" name="style" class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-              {% for value, label in style_choices %}
-                <option value="{{ value }}">{{ label }}</option>
-              {% endfor %}
-            </select>
-          </div>
-
-          <div class="md:relative">
-            <label for="font" class="block mb-1 text-sm font-medium text-gray-700">Font</label>
-            <select id="font" name="font" class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-              {% for value, label in font_choices %}
-                <option value="{{ value }}">{{ label }}</option>
-              {% endfor %}
-            </select>
-          </div>
-
-          <div>
-            <label for="title" class="block mb-1 text-sm font-medium text-gray-700">Title</label>
-            <input type="text" id="title" name="title" class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-          </div>
-
-          <div>
-            <label for="subtitle" class="block mb-1 text-sm font-medium text-gray-700">Subtitle</label>
-            <input type="text" id="subtitle" name="subtitle" class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-          </div>
-
-          <div>
-            <label for="eyebrow" class="block mb-1 text-sm font-medium text-gray-700">Eyebrow</label>
-            <input type="text" id="eyebrow" name="eyebrow" class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-          </div>
-
-          <div>
-            <label for="image_url" class="block mb-1 text-sm font-medium text-gray-700">Background Image URL</label>
-            <input type="url" id="image_url" name="image_url" class="px-3 py-2 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-          </div>
-
-          <div>
-            <button type="submit" class="px-4 py-2 w-full text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-              Generate Image
-            </button>
-          </div>
-        </form>
+    <dl class="mt-10 grid gap-4 text-sm sm:grid-cols-3">
+      <div class="border-t border-[var(--osig-line)] pt-4">
+        <dt class="font-bold text-[var(--osig-ink)]">URL based</dt>
+        <dd class="mt-1 text-[var(--osig-muted)]">Works from query parameters, no editor required.</dd>
       </div>
-
-      <div class="w-full md:w-1/2 md:mt-10">
-        <div data-image-generator-target="generatedImage" class="flex overflow-hidden justify-center items-center bg-gray-100 rounded-lg aspect-video">
-          <p class="text-gray-500">Generated image will appear here</p>
-        </div>
-        <div class="mt-4">
-          <label for="generate-link" class="block mb-1 text-sm font-medium text-gray-700">Generated Link</label>
-          <div class="flex flex-col">
-            <textarea id="generate-link" data-image-generator-target="generateLink" readonly class="px-3 py-2 mb-5 w-full rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" rows="11"></textarea>
-            <button type="button" data-image-generator-target="copyButton" data-action="click->image-generator#copyGenerateLink" class="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-              Copy
-            </button>
-          </div>
-        </div>
+      <div class="border-t border-[var(--osig-line)] pt-4">
+        <dt class="font-bold text-[var(--osig-ink)]">Signed output</dt>
+        <dd class="mt-1 text-[var(--osig-muted)]">Generate tamper-proof URLs for production pages.</dd>
       </div>
+      <div class="border-t border-[var(--osig-line)] pt-4">
+        <dt class="font-bold text-[var(--osig-ink)]">Copy-ready</dt>
+        <dd class="mt-1 text-[var(--osig-muted)]">Use the wizard when you need full OG tags.</dd>
+      </div>
+    </dl>
+  </div>
 
+  <div class="panel overflow-hidden">
+    <div class="border-b border-[var(--osig-line)] bg-[var(--osig-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--osig-muted)]">
+      Generated example
+    </div>
+    <div class="grid gap-4 p-4">
+      <img
+        src="{% static 'vendors/images/base-example.png' %}"
+        class="w-full rounded-lg border border-[var(--osig-line)]"
+        alt="Example OSIG output for an article social preview"
+        width="800"
+        height="450"
+        decoding="async"
+      />
+      <pre class="code-block whitespace-pre-wrap break-all"><code>https://osig.app/g?
+style=base&amp;site=x
+title=10 Years of Great Books</code></pre>
     </div>
   </div>
-</div>
+</section>
+
+<section id="generator" class="site-container py-10">
+  <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+      <p class="page-kicker">Try it now</p>
+      <h2 class="section-title mt-3">Build the image URL.</h2>
+    </div>
+    <p class="lede max-w-xl">
+      Fill the fields, generate a preview, then copy the URL. Logged-in users automatically include their key.
+    </p>
+  </div>
+
+  <div
+    data-controller="image-generator"
+    class="panel grid gap-0 overflow-hidden lg:grid-cols-[0.95fr_1.05fr]"
+    data-image-generator-user-key-value="{{ user_key|default:'' }}"
+  >
+    <form data-action="submit->image-generator#generate" class="space-y-6 p-5 lg:p-6">
+      {% csrf_token %}
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div>
+          <label for="site" class="field-label">Size</label>
+          <select id="site" name="site" class="field">
+            {% for value, label in site_choices %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label for="style" class="field-label">Template</label>
+          <select id="style" name="style" class="field">
+            {% for value, label in style_choices %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label for="font" class="field-label">Font</label>
+          <select id="font" name="font" class="field">
+            {% for value, label in font_choices %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <label for="title" class="field-label">Title</label>
+          <input type="text" id="title" name="title" class="field" placeholder="Hiring: Senior Django Engineer">
+        </div>
+
+        <div class="sm:col-span-2">
+          <label for="subtitle" class="field-label">Subtitle</label>
+          <input type="text" id="subtitle" name="subtitle" class="field" placeholder="Build reliable product features and own the roadmap.">
+        </div>
+
+        <div>
+          <label for="eyebrow" class="field-label">Eyebrow</label>
+          <input type="text" id="eyebrow" name="eyebrow" class="field" placeholder="Remote · Full-time">
+        </div>
+
+        <div>
+          <label for="image_url" class="field-label">Image or logo URL</label>
+          <input type="url" id="image_url" name="image_url" class="field" placeholder="https://example.com/logo.png">
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div>
+          <label for="format" class="field-label">Format</label>
+          <select id="format" name="format" class="field">
+            <option value="png">PNG</option>
+            <option value="jpeg">JPEG</option>
+          </select>
+        </div>
+        <div>
+          <label for="quality" class="field-label">JPEG quality</label>
+          <input type="number" id="quality" name="quality" class="field" min="1" max="100" placeholder="85">
+        </div>
+        <div>
+          <label for="max_kb" class="field-label">Max KB</label>
+          <input type="number" id="max_kb" name="max_kb" class="field" min="1" placeholder="Optional">
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary w-full">Generate image</button>
+    </form>
+
+    <div class="border-t border-[var(--osig-line)] bg-[var(--osig-surface-soft)] p-5 lg:border-l lg:border-t-0 lg:p-6">
+      <div class="sticky top-24 space-y-5">
+        <div>
+          <div class="mb-2 flex items-center justify-between gap-3">
+            <label class="field-label mb-0">Preview</label>
+            <span data-image-generator-target="status" class="text-xs font-semibold text-[var(--osig-soft)]">Ready</span>
+          </div>
+          <div data-image-generator-target="generatedImage" class="preview-frame">
+            <div class="px-6 text-center">
+              <p class="font-semibold text-[var(--osig-ink)]">Generated image appears here.</p>
+              <p class="mt-2 text-sm text-[var(--osig-muted)]">Use a title and template first, then generate a preview.</p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label for="generate-link" class="field-label">Generated URL</label>
+          <textarea id="generate-link" data-image-generator-target="generateLink" readonly class="copy-field" rows="10"></textarea>
+          <button type="button" data-image-generator-target="copyButton" data-action="click->image-generator#copyGenerateLink" class="btn-secondary mt-3 w-full">
+            Copy URL
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="site-container grid gap-8 py-12 lg:grid-cols-[0.8fr_1.2fr] lg:py-16">
+  <div>
+    <p class="page-kicker">Publishing path</p>
+    <h2 class="section-title mt-3">From blank metadata to validated preview.</h2>
+  </div>
+  <div class="grid gap-4 md:grid-cols-3">
+    <div class="panel p-5">
+      <span class="step-pill">1</span>
+      <h3 class="mt-5 text-lg font-bold">Choose content</h3>
+      <p class="mt-2 text-sm leading-6 text-[var(--osig-muted)]">Add the title, subtitle, image, logo, and template that match the page.</p>
+    </div>
+    <div class="panel p-5">
+      <span class="step-pill">2</span>
+      <h3 class="mt-5 text-lg font-bold">Generate URL</h3>
+      <p class="mt-2 text-sm leading-6 text-[var(--osig-muted)]">Copy a direct image URL or use the wizard to create signed metadata.</p>
+    </div>
+    <div class="panel p-5">
+      <span class="step-pill">3</span>
+      <h3 class="mt-5 text-lg font-bold">Validate share</h3>
+      <p class="mt-2 text-sm leading-6 text-[var(--osig-muted)]">Open social validators before publishing so cached previews behave.</p>
+    </div>
+  </div>
+</section>
+
+<section class="site-container py-12">
+  <div class="grid gap-8 lg:grid-cols-2 lg:items-start">
+    <div>
+      <p class="page-kicker">Template examples</p>
+      <h2 class="section-title mt-3">Use images for articles, jobs, products, and company pages.</h2>
+      <p class="lede mt-5">
+        The same endpoint supports multiple styles and fonts. Start with the generator when you need one image, or use signed API output for repeatable publishing.
+      </p>
+      <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+        <a href="{% url 'onboarding_wizard' %}" class="btn-primary">Create OG tags</a>
+        <a href="{% url 'how_to' %}#parameters" class="btn-secondary">View parameters</a>
+      </div>
+    </div>
+    <div class="grid gap-4">
+      <img
+        src="{% static 'vendors/images/logo-example.png' %}"
+        class="w-full rounded-lg border border-[var(--osig-line)]"
+        alt="Example OSIG logo template output"
+        width="796"
+        height="445"
+        loading="lazy"
+        decoding="async"
+      />
+      <img
+        src="{% static 'vendors/images/no-params-example.png' %}"
+        class="w-full rounded-lg border border-[var(--osig-line)]"
+        alt="Example OSIG output when no parameters are supplied"
+        width="797"
+        height="447"
+        loading="lazy"
+        decoding="async"
+      />
+    </div>
+  </div>
+</section>
 
 {% if show_confetti %}
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
