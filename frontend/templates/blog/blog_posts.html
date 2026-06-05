@@ -26,25 +26,27 @@
 {% endblock meta %}
 
 {% block content %}
-<div class="container px-4 py-8 mx-auto md:relative">
-  <div class="mx-auto max-w-3xl">
-    <h1 class="mb-8 text-3xl font-bold text-center">OSIG Blog</h1>
+<section class="site-container-narrow py-12 lg:py-16">
+  <div>
+    <p class="page-kicker">Guides</p>
+    <h1 class="section-title mt-3">Open Graph image guides.</h1>
+    <p class="lede mt-4">Read practical notes about social previews, metadata, and dynamic image generation.</p>
+  </div>
     {% if blog_posts %}
-      <div class="space-y-4">
+      <div class="mt-8 space-y-4">
         {% for post in blog_posts %}
-          <a href="{{ post.get_absolute_url }}" class="block rounded-lg transition duration-150 ease-in-out hover:bg-gray-100">
-            <article class="p-4">
-              <h2 class="mb-2 text-2xl font-semibold text-gray-900">{{ post.title }}</h2>
-              <p class="text-gray-600">{{ post.description }}</p>
+          <a href="{{ post.get_absolute_url }}" class="panel block p-5 transition-colors hover:bg-[var(--osig-surface-soft)]">
+            <article>
+              <h2 class="text-xl font-bold tracking-tight text-[var(--osig-ink)]">{{ post.title }}</h2>
+              <p class="mt-2 text-sm leading-6 text-[var(--osig-muted)]">{{ post.description }}</p>
             </article>
           </a>
         {% endfor %}
       </div>
     {% else %}
-      <p class="text-center text-gray-600">No blog posts available at the moment.</p>
+      <p class="status-note mt-8">No blog posts are available right now.</p>
     {% endif %}
-  </div>
-</div>
+</section>
 {% endblock content %}
 
 {% block schema %}

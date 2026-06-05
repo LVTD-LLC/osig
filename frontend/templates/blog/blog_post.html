@@ -26,11 +26,13 @@
 {% endblock meta %}
 
 {% block content %}
-<article class="container px-4 py-8 mx-auto md:relative">
-  <div class="mx-auto max-w-3xl">
-    <h1 class="mb-6 text-3xl font-bold">{{ blog_post.title }}</h1>
+<article class="site-container-narrow py-12 lg:py-16">
+  <div>
+    <a href="{% url 'blog_posts' %}" class="link text-sm">Back to guides</a>
+    <h1 class="section-title mt-4">{{ blog_post.title }}</h1>
+    <p class="lede mt-4">{{ blog_post.description }}</p>
 
-    <div class="prose prose-lg max-w-none">
+    <div class="doc-prose mt-10">
       {{ blog_post.content|markdown|safe }}
     </div>
   </div>
