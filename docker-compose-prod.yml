@@ -49,6 +49,21 @@ services:
     env_file:
       - .env
 
+  mcp:
+    image: "${APP_IMAGE:-osig:latest}"
+    working_dir: /app
+    ports:
+      - "8765:80"
+    environment:
+      APP_PROCESS_TYPE: mcp
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+
 volumes:
   postgres_data:
   redis_data:

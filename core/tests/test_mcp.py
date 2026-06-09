@@ -9,8 +9,7 @@ from fastmcp import Client
 from fastmcp.exceptions import ToolError
 from PIL import Image
 
-from core.models import Image as ImageModel, RenderAttempt
-from core.render_observability import RenderErrorType
+from core.models import Image as ImageModel
 
 
 def _run(coro):
@@ -48,8 +47,8 @@ def test_mcp_lists_image_iteration_tools():
         "render_image_preview",
         "build_signed_image_url",
         "list_recent_generated_images",
-        "get_recent_render_metrics",
     }.issubset(tool_names)
+    assert "get_recent_render_metrics" not in tool_names
 
 
 @pytest.mark.django_db(transaction=True)
@@ -296,37 +295,3 @@ def test_list_recent_generated_images_requires_and_scopes_by_key():
     assert result.data["count"] == 1
     assert result.data["images"][0]["params"]["title"] == "First image"
     assert missing_key_result.is_error is True
-
-
-@pytest.mark.django_db(transaction=True)
-def test_get_recent_render_metrics_reports_existing_attempts():
-    admin_user = User.objects.create_superuser(username="admin", email="admin@example.com", password="pass123")
-    profile = admin_user.profile
-
-    RenderAttempt.objects.create(profile=profile, key=profile.key, style="base", success=True, duration_ms=100)
-    RenderAttempt.objects.create(
-        profile=profile,
-        key=profile.key,
-        style="base",
-        success=False,
-        duration_ms=125,
-        error_type=RenderErrorType.TRANSIENT_UPSTREAM_FETCH,
-    )
-
-    result = _run(_call_tool("get_recent_render_metrics", {"window_hours": 24}))
-
-    assert result.data["total_attempts"] == 2
-    assert result.data["failed_attempts"] == 1
-    assert result.data["fail_rate_percent"] == 50.0
-    assert result.data["error_counts"][RenderErrorType.TRANSIENT_UPSTREAM_FETCH] == 1
-
-
-@pytest.mark.django_db(transaction=True)
-def test_get_recent_render_metrics_requires_superuser_for_hosted_auth(monkeypatch):
-    import core.mcp as core_mcp
-
-    user = User.objects.create_user(username="regular", email="regular@example.com", password="pass123")
-    monkeypatch.setattr(core_mcp, "_get_http_profile", lambda: user.profile)
-
-    with pytest.raises(ToolError):
-        _run(_call_tool("get_recent_render_metrics", {"window_hours": 24}))

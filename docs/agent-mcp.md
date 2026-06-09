@@ -1,54 +1,103 @@
-# OSIG Agent MCP
+# Agent MCP Usage
 
-OSIG exposes a hosted FastMCP server for agents that need to iterate on generated Open Graph images.
+Use OSIG's MCP server when an AI agent needs to inspect image options, render previews, and publish a stable `/g` image URL.
 
-The server is intentionally small and explicit. It does not expose generic database access or arbitrary file access. The tools wrap the existing image renderer, signing helpers, and render metrics so future improvements stay close to the Django source of truth.
+This guide is for agents and agent-client setup. Human website usage is in [human-usage.md](human-usage.md).
 
 ## Hosted Endpoint
 
-Production serves MCP at:
+Production MCP endpoint:
 
 ```text
 https://osig.app/mcp/
 ```
 
-Hosted requests require an OSIG profile key in either header:
+No authentication headers are required during the current trial.
 
-```text
-X-API-Key: <profile-key>
-Authorization: Bearer <profile-key>
+Example MCP client config:
+
+```json
+{
+  "mcpServers": {
+    "osig": {
+      "url": "https://osig.app/mcp/"
+    }
+  }
+}
 ```
 
-The web process serves `/mcp/` through ASGI in the same container as Django, matching the `django-saas-starter` hosted MCP pattern.
-The production server command runs `gunicorn osig.asgi:application` with `uvicorn_worker.UvicornWorker`; no separate MCP container is required.
+## Local HTTP Server
 
-## Run Locally
+Local commands expect the normal Django environment. If you do not already have `.env`, start from the example:
 
-For stdio clients:
+```bash
+cp .env.example .env
+```
+
+For native local runs without Docker Postgres, set `DATABASE_URL=sqlite:///db.sqlite3` in `.env`.
+
+Run the standalone FastMCP Streamable HTTP server:
+
+```bash
+uv run python mcp_http_server.py
+```
+
+Default local endpoint:
+
+```text
+http://127.0.0.1:8765/mcp
+```
+
+Override host, port, or path with:
+
+```bash
+MCP_HOST=0.0.0.0 MCP_PORT=8765 MCP_PATH=/mcp uv run python mcp_http_server.py
+```
+
+## Local Stdio Server
+
+For stdio-based clients:
 
 ```bash
 uv run python mcp_server.py
 ```
 
-For clients that inspect a server before connecting:
+Inspect the tool list:
 
 ```bash
 uv run fastmcp list --command "uv run python mcp_server.py"
 ```
 
-The stdio entrypoint uses `DJANGO_SETTINGS_MODULE=osig.settings` and calls `django.setup()` before loading `core.mcp`. It expects the same environment as the Django app, either through `.env` or exported shell variables.
+If you are passing ad hoc environment values instead of using `.env`, put them inside the spawned command string:
 
-When using `fastmcp list --command` with ad hoc local settings instead of a `.env` file, put those environment variables inside the command string so the spawned stdio server receives them.
+```bash
+uv run fastmcp list --command "sh -c 'set -a; . ./.env.example; set +a; uv run python mcp_server.py'"
+```
 
 ## Tools
 
-- `get_image_generation_contract`: styles, valid choices, dimensions, fields, and the recommended iteration workflow.
+- `get_image_generation_contract`: returns styles, choices, dimensions, fields, and the recommended workflow.
 - `normalize_image_params`: canonicalizes renderer inputs and maps `image_or_logo` to `image_url`.
 - `render_image_preview`: renders a preview and returns metadata plus optional base64 image bytes.
-- `build_signed_image_url`: creates a tamper-proof public `/g` URL.
-- `list_recent_generated_images`: returns capped summaries of persisted images scoped to a required profile key.
-- `get_recent_render_metrics`: returns recent render attempt health metrics. Hosted HTTP calls require a superuser profile key.
+- `build_signed_image_url`: creates a signed public `/g` URL.
+- `list_recent_generated_images`: returns recent persisted images for an explicit OSIG profile key.
 
-## Transport Notes
+Admin render metrics are not exposed through the unauthenticated MCP server.
 
-The default entrypoint is stdio because this is meant for local/editor agents. If this becomes a remote service, run it as a private HTTP sidecar rather than mounting it into the current WSGI deployment, then add authentication before exposing it beyond trusted infrastructure.
+## Recommended Agent Workflow
+
+1. Call `get_image_generation_contract`.
+2. Choose `style`, `site`, `font`, and copy fields.
+3. Call `normalize_image_params` to catch canonical params and warnings.
+4. Call `render_image_preview` while iterating.
+5. Call `build_signed_image_url` once the preview is ready to publish.
+6. Put the returned URL in `og:image`, `twitter:image`, and schema image fields.
+
+## Serving Model
+
+OSIG serves MCP through FastMCP in two ways:
+
+- ASGI mount: `osig/asgi.py` mounts `mcp.http_app(path="/")` at `/mcp` beside Django.
+- Sidecar: `mcp_http_server.py` runs the same FastMCP server as a separate Streamable HTTP process.
+
+The ASGI mount requires an async server such as Gunicorn with `uvicorn_worker.UvicornWorker`.

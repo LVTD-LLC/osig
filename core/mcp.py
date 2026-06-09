@@ -20,7 +20,6 @@ from core.image_styles import generate_image_router
 from core.image_utils import get_image_dimensions
 from core.mcp_auth import authenticate_mcp_headers
 from core.models import Image as ImageModel, Profile
-from core.render_observability import build_render_metrics
 from core.signing import build_signed_params
 from osig.utils import get_osig_logger
 
@@ -200,12 +199,6 @@ def _params_for_request(params: ImageParams) -> ImageParams:
     return params.model_copy(update={"key": profile.key})
 
 
-def _require_http_superuser() -> None:
-    profile = _get_http_profile()
-    if profile is not None and not profile.user.is_superuser:
-        raise PermissionError("This MCP tool requires a superuser profile key.")
-
-
 def _summarize_image(image: ImageModel) -> dict[str, Any]:
     image_data = image.image_data or {}
 
@@ -242,7 +235,7 @@ def create_mcp() -> FastMCP:
         "OSIG Image Iteration MCP",
         instructions=(
             "Use these tools to inspect OSIG image capabilities, normalize render parameters, "
-            "generate local previews, create signed public image URLs, and inspect recent render health."
+            "generate previews, and create signed public image URLs."
         ),
         on_duplicate="error",
     )
@@ -282,7 +275,6 @@ def create_mcp() -> FastMCP:
                 "Call normalize_image_params to get canonical parameters and warnings.",
                 "Call render_image_preview while varying one or two fields at a time.",
                 "Call build_signed_image_url once the preview parameters are ready to publish.",
-                "Use get_recent_render_metrics if render failures or latency need investigation.",
             ],
         }
 
@@ -392,24 +384,6 @@ def create_mcp() -> FastMCP:
 
             images = [_summarize_image(image) for image in queryset[:limit]]
             return {"count": len(images), "images": images}
-        finally:
-            close_old_connections()
-
-    @mcp.tool(timeout=10)
-    def get_recent_render_metrics(window_hours: Annotated[int, Field(ge=1, le=24 * 30)] = 24) -> dict[str, Any]:
-        """Return aggregate render health metrics for the recent render-attempt window."""
-        close_old_connections()
-        try:
-            _require_http_superuser()
-            metrics = build_render_metrics(window_hours=window_hours)
-            return {
-                "window_hours": metrics.window_hours,
-                "total_attempts": metrics.total_attempts,
-                "failed_attempts": metrics.failed_attempts,
-                "fail_rate_percent": metrics.fail_rate_percent,
-                "p95_render_ms": metrics.p95_render_ms,
-                "error_counts": metrics.error_counts,
-            }
         finally:
             close_old_connections()
 

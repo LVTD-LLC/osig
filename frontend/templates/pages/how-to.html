@@ -4,16 +4,16 @@
 {% block meta %}
 {% site_url request.path as page_url %}
 {% absolute_static "vendors/images/logo-square.png" as logo_square_url %}
-{% og_image_url "How to Generate Open Graph Images" "Learn how to create and add OSIG social preview images to your site with URL parameters, agent MCP workflows, and examples." image_url=logo_square_url as page_og_image %}
+{% og_image_url "How to Generate Open Graph Images" "Learn how to create and add OSIG social preview images to your site with URL parameters and examples." image_url=logo_square_url as page_og_image %}
 <title>How to Generate Open Graph Images | OSIG</title>
-<meta name="description" content="Learn how to generate Open Graph and Twitter card images with OSIG URL parameters, examples, styles, fonts, MCP tools, and integration notes." />
+<meta name="description" content="Learn how to generate Open Graph and Twitter card images with OSIG URL parameters, examples, styles, fonts, and integration notes." />
 <meta name="robots" content="index, follow" />
 <link rel="canonical" href="{{ page_url }}" />
 
 <meta property="og:type" content="website" />
 <meta property="og:title" content="How to Generate Open Graph Images | OSIG" />
 <meta property="og:url" content="{{ page_url }}" />
-<meta property="og:description" content="Learn how to generate Open Graph and Twitter card images with OSIG URL parameters, examples, styles, fonts, MCP tools, and integration notes." />
+<meta property="og:description" content="Learn how to generate Open Graph and Twitter card images with OSIG URL parameters, examples, styles, fonts, and integration notes." />
 <meta property="og:image" content="{{ page_og_image }}" />
 <meta property="og:locale" content="en_US" />
 
@@ -21,7 +21,7 @@
 <meta name="twitter:creator" content="@rasulkireev" />
 <meta name="twitter:site" content="@rasulkireev" />
 <meta name="twitter:title" content="How to Generate Open Graph Images | OSIG" />
-<meta name="twitter:description" content="Learn how to generate Open Graph and Twitter card images with OSIG URL parameters, examples, styles, fonts, MCP tools, and integration notes." />
+<meta name="twitter:description" content="Learn how to generate Open Graph and Twitter card images with OSIG URL parameters, examples, styles, fonts, and integration notes." />
 <meta name="twitter:image" content="{{ page_og_image }}" />
 {% endblock meta %}
 
@@ -34,7 +34,6 @@
       <a href="#examples" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Examples</a>
       <a href="#output-controls" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Output controls</a>
       <a href="#signed-urls" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Signed URLs</a>
-      <a href="#mcp" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Using the MCP</a>
       <a href="#meta-tags" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Meta tags</a>
       <a href="#validation" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Validation</a>
     </div>
@@ -171,31 +170,6 @@
   "expires_in_seconds": 3600
 }</code></pre>
 
-      <h2 id="mcp">Using the MCP</h2>
-      <p>OSIG exposes a Model Context Protocol server for agent clients that need to inspect options, render previews, and build signed image URLs.</p>
-      <ol>
-        <li>Get your profile key from the <a class="link" href="{% url 'settings' %}">settings page</a>.</li>
-        <li>Connect your MCP client to <code>https://osig.app/mcp/</code>.</li>
-        <li>Authenticate with <code>X-API-Key: &lt;profile-key&gt;</code> or <code>Authorization: Bearer &lt;profile-key&gt;</code>.</li>
-        <li>Call <code>get_image_generation_contract</code> first to inspect styles, fields, dimensions, and the recommended workflow.</li>
-      </ol>
-      <pre class="code-block"><code>{
-  "mcpServers": {
-    "osig": {
-      "url": "https://osig.app/mcp/",
-      "headers": {
-        "X-API-Key": "YOUR_OSIG_PROFILE_KEY"
-      }
-    }
-  }
-}</code></pre>
-      <p>A useful agent workflow is to normalize parameters, render previews while iterating, build a signed URL, then place that URL in your Open Graph and Twitter image tags.</p>
-      <pre class="code-block"><code>normalize_image_params
-render_image_preview
-build_signed_image_url</code></pre>
-      <p>For local development with this repository checked out, run the stdio server.</p>
-      <pre class="code-block"><code>uv run python mcp_server.py</code></pre>
-
       <h2 id="meta-tags">Meta tags</h2>
       <p>Use the generated image URL in Open Graph and Twitter card metadata.</p>
       <pre class="code-block"><code>&lt;meta property="og:image" content="{ generated_image_url }" /&gt;
@@ -261,7 +235,7 @@ build_signed_image_url</code></pre>
     "@context": "https://schema.org",
     "@type": "HowTo",
     "name": "How to Generate Open Graph Images with OSIG",
-    "description": "Learn how to generate Open Graph and Twitter card images with OSIG URL parameters, examples, styles, fonts, MCP tools, and integration notes.",
+    "description": "Learn how to generate Open Graph and Twitter card images with OSIG URL parameters, examples, styles, fonts, and integration notes.",
     "url": "{{ page_url }}",
     "author": {
       "@type": "Person",

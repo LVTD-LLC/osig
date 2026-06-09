@@ -49,3 +49,14 @@ def test_asgi_application_mounts_hosted_mcp():
 
     assert "/mcp" in route_paths
     assert "" in route_paths
+
+
+def test_asgi_application_mounts_mcp_without_auth_middleware():
+    from starlette.routing import Mount
+
+    from osig.asgi import application
+
+    mcp_mounts = [route for route in application.routes if isinstance(route, Mount) and route.path == "/mcp"]
+
+    assert len(mcp_mounts) == 1
+    assert not isinstance(mcp_mounts[0].app, McpAuthMiddleware)
