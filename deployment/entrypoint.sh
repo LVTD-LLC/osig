@@ -7,10 +7,11 @@ APP_PORT="${PORT:-80}"
 
 process_type="${APP_PROCESS_TYPE:-}"
 
-while getopts ":sw" option; do
+while getopts ":swm" option; do
     case "${option}" in
         s) process_type="server" ;;
         w) process_type="worker" ;;
+        m) process_type="mcp" ;;
         *)
             echo "Invalid option: -$OPTARG" >&2
             exit 1
@@ -21,7 +22,7 @@ shift $((OPTIND - 1))
 
 if [ -z "$process_type" ]; then
     if [ "${ENVIRONMENT:-}" = "prod" ]; then
-        echo "APP_PROCESS_TYPE must be set to 'server' or 'worker' when ENVIRONMENT=prod." >&2
+        echo "APP_PROCESS_TYPE must be set to 'server', 'worker', or 'mcp' when ENVIRONMENT=prod." >&2
         exit 1
     fi
 
@@ -70,8 +71,14 @@ case "$process_type" in
         echo "Starting OSIG workers..."
         exec uv run --no-sync python manage.py qcluster
         ;;
+    mcp)
+        echo "Starting OSIG MCP server..."
+        export MCP_HOST="${MCP_HOST:-0.0.0.0}"
+        export MCP_PORT="${MCP_PORT:-$APP_PORT}"
+        exec uv run --no-sync python mcp_http_server.py
+        ;;
     *)
-        echo "Invalid APP_PROCESS_TYPE: $process_type. Expected 'server' or 'worker'." >&2
+        echo "Invalid APP_PROCESS_TYPE: $process_type. Expected 'server', 'worker', or 'mcp'." >&2
         exit 1
         ;;
 esac

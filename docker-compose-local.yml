@@ -59,6 +59,27 @@ services:
     env_file:
       - .env
 
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile-python
+    working_dir: /app
+    command: uv run --no-sync python mcp_http_server.py
+    volumes:
+      - .:/app
+    ports:
+      - "8765:8765"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 8765
+
   frontend:
     image: node:24.15.0
     working_dir: /app

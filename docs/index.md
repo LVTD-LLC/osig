@@ -1,3 +1,6 @@
-# Hello
+# OSIG Documentation
 
-I'm glad you decided to give my boilerplate a go. I recommend you star with the "[Getting Started](/getting-started)" section.
+OSIG has two usage paths:
+
+- [Human Usage](human-usage.md): use `/g` image URLs in website meta tags.
+- [Agent MCP Usage](agent-mcp.md): connect AI agents to OSIG through FastMCP.

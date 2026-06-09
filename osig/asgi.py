@@ -20,10 +20,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "osig.settings")
 django_application = get_asgi_application()
 
 from core.mcp import mcp  # noqa: E402
-from core.mcp_auth import McpAuthMiddleware  # noqa: E402
 
-raw_mcp_application = mcp.http_app(path="/")
-mcp_application = McpAuthMiddleware(raw_mcp_application)
+mcp_application = mcp.http_app(path="/")
 
 
 def redirect_mcp(request: Request) -> RedirectResponse:
@@ -36,5 +34,5 @@ application = Starlette(
         Mount("/mcp", app=mcp_application),
         Mount("/", app=django_application),
     ],
-    lifespan=raw_mcp_application.lifespan,
+    lifespan=mcp_application.lifespan,
 )
