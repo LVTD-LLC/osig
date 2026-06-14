@@ -43,7 +43,8 @@ The default unpaid behavior is watermarking. Paid plans should remove watermarks
 
 ## In Scope
 
-- MCP and API tools for image contract discovery, normalization, preview rendering, signed URL creation, recent image listing, and render metrics.
+- MCP tools for image contract discovery, normalization, preview rendering, signed URL creation, and recent image listing.
+- API endpoints for render metrics and integration helpers that should not be exposed as unauthenticated MCP tools.
 - Open Graph and social preview templates, starting with article, logo, and job-board styles.
 - Deterministic code-rendered PNG/JPEG output.
 - Usage metering, quota enforcement, paid access, watermarking, and signed URL workflows.

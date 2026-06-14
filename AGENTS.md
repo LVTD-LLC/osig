@@ -82,7 +82,8 @@ npm run build
 - When adding image inputs, make them model-friendly: named fields, explicit enum choices, bounded text lengths, and clear validation errors.
 - Keep preview and publish flows separate. Agents should be able to iterate cheaply, then create a signed public URL only when ready.
 - Do not add arbitrary filesystem, shell, database, or admin tools to hosted MCP.
-- Hosted MCP requests must stay authenticated with profile keys via `X-API-Key` or `Authorization: Bearer <key>`.
+- The current hosted MCP surface is an unauthenticated trial. Do not expose private, admin, billing, or cross-profile tools while it remains public.
+- Reintroduce profile-key authentication before treating hosted MCP as a paid production surface.
 - Public URL parameters should use `key`, not `profile_id`.
 
 ## Pricing And Access Rules
@@ -92,14 +93,14 @@ npm run build
 - Watermarking is the default unpaid/free enforcement mechanism for rendered images.
 - Quotas should remain visible and enforceable through profile usage records and response headers.
 - Do not introduce new unlimited free hosted paths around watermark, quota, signing, or MCP authentication.
-- Any free trial or demo should be deliberately bounded by quota, watermark, expiration, or non-production scope.
+- Any free trial or demo, including the current unauthenticated MCP trial, should be deliberately bounded by quota, watermark, expiration, limited tool scope, or non-production positioning.
 
 ## Risky Actions
 
 Ask for explicit approval before:
 
 - Removing or breaking current public `/g` behavior without a migration plan.
-- Weakening signature verification, MCP auth, API key handling, quotas, or watermark rules.
+- Weakening signature verification, API key handling, quotas, watermark rules, or expanding unauthenticated MCP scope.
 - Exposing generated images, profile keys, customer data, or render history across profiles.
 - Adding new paid-plan behavior without making entitlement and failure states clear.
 - Replacing deterministic rendering with model image generation as the default path.

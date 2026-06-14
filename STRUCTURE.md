@@ -14,11 +14,12 @@
 - `deployment/`: production Dockerfile and entrypoint.
 - `.github/workflows/`: deployment workflow.
 - `mcp_server.py`: local stdio MCP entrypoint.
+- `mcp_http_server.py`: standalone FastMCP Streamable HTTP sidecar entrypoint.
 
 ## Important Files
 
 - `core/mcp.py`: MCP contract and tool implementation.
-- `core/mcp_auth.py`: hosted MCP API-key authentication.
+- `core/mcp_auth.py`: profile-key MCP auth helpers; not currently mounted on the public trial MCP surface.
 - `core/image_styles.py`: image style router and template renderers.
 - `core/image_utils.py`: dimensions, font loading, image fetching, output encoding, watermark helper.
 - `core/views.py`: public pages and `/g` renderer endpoint.

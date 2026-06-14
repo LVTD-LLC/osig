@@ -37,7 +37,8 @@ uv run fastmcp list --command "uv run python mcp_server.py"
 
 ## Primary Product Interfaces
 
-- Hosted MCP: `/mcp/`, authenticated with `X-API-Key` or `Authorization: Bearer <key>`.
+- Hosted MCP trial: `/mcp/`, currently public/unauthenticated for agent experimentation.
+- Standalone local MCP HTTP sidecar: `uv run python mcp_http_server.py`.
 - Local MCP stdio: `uv run python mcp_server.py`.
 - Public render endpoint: `/g`.
 - Signed URL API: `POST /api/sign`.
@@ -56,9 +57,10 @@ Current tools:
 - `render_image_preview`
 - `build_signed_image_url`
 - `list_recent_generated_images`
-- `get_recent_render_metrics`
 
-Keep MCP tools narrow, typed, and deterministic. They should wrap existing renderer/signing/metrics behavior rather than becoming a separate product implementation.
+Admin render metrics are REST-only at `GET /api/admin/render-metrics`; do not list them as MCP tools while hosted MCP remains public and unauthenticated.
+
+Keep MCP tools narrow, typed, and deterministic. They should wrap existing renderer/signing behavior rather than becoming a separate product implementation.
 
 ## Rendering Model
 
@@ -84,7 +86,9 @@ Future styles should be added through the router, MCP contract, docs, and tests 
 
 - `Profile.key` is the public API/MCP key.
 - Public URLs should use `key`; do not expose or accept `profile_id` from public callers.
-- Hosted MCP auth lives in `core/mcp_auth.py`.
+- `core/mcp_auth.py` contains profile-key MCP auth helpers, but the current ASGI mount is intentionally unauthenticated for trial use.
+- User-scoped MCP tools still require an explicit OSIG profile key as a tool argument.
+- Re-enable hosted MCP auth before introducing paid production MCP access or private/admin tools.
 - Quota tracking lives in `core/usage.py` and `ProfileUsage`.
 - Subscription/customer state lives on `Profile` through dj-stripe models.
 - Watermark removal is tied to subscription status through `check_if_profile_has_pro_subscription`.
@@ -103,12 +107,14 @@ Future styles should be added through the router, MCP contract, docs, and tests 
 - The shared production image is built from `deployment/Dockerfile`.
 - `APP_PROCESS_TYPE=server` starts Gunicorn with `uvicorn_worker.UvicornWorker` against `osig.asgi:application`.
 - `APP_PROCESS_TYPE=worker` starts Django Q workers.
+- `APP_PROCESS_TYPE=mcp` starts the standalone FastMCP HTTP sidecar from `mcp_http_server.py`.
 - CapRover app names are `osig` and `osig-workers`.
 
 ## Technical Constraints
 
 - Do not weaken signature verification in `core/signing.py`.
-- Do not bypass MCP auth on hosted HTTP transport.
+- Do not expose private/admin MCP tools while hosted MCP remains unauthenticated.
+- Do not launch paid production MCP access until profile-key auth is re-enabled.
 - Do not add broad admin/database/file access to MCP.
 - Do not make rendering depend on external model image generation by default.
 - Keep generated image outputs deterministic for the same normalized params.
