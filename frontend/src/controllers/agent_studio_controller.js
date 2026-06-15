@@ -69,7 +69,10 @@ export default class extends Controller {
     this.latestPayload = payload;
     this.setStatus("Rendered");
 
-    this.previewTarget.innerHTML = `<img src="${payload.data_uri}" alt="Generated social preview image">`;
+    const img = document.createElement("img");
+    img.src = payload.data_uri;
+    img.alt = "Generated social preview image";
+    this.previewTarget.replaceChildren(img);
     this.renderWarnings(payload.warnings || []);
     this.renderMetadata(payload);
     this.exportTarget.value = JSON.stringify(this.exportPayload(payload), null, 2);
@@ -109,11 +112,15 @@ export default class extends Controller {
 
   renderMetadata(payload) {
     const hash = payload.sha256 ? `${payload.sha256.slice(0, 10)}…` : "none";
+    const width = Number(payload.width);
+    const height = Number(payload.height);
+    const dimensions = `${Number.isFinite(width) ? width : 0} x ${Number.isFinite(height) ? height : 0}`;
+
     this.metadataTarget.innerHTML = `
       <div><span>Template</span><strong>${this.escapeHtml(payload.spec?.style || "base")}</strong></div>
-      <div><span>Size</span><strong>${payload.width} x ${payload.height}</strong></div>
+      <div><span>Size</span><strong>${dimensions}</strong></div>
       <div><span>Type</span><strong>${this.escapeHtml(payload.content_type || "")}</strong></div>
-      <div><span>Hash</span><strong title="${this.escapeHtml(payload.sha256 || "")}">${hash}</strong></div>
+      <div><span>Hash</span><strong title="${this.escapeHtml(payload.sha256 || "")}">${this.escapeHtml(hash)}</strong></div>
     `;
   }
 

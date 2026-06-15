@@ -3,10 +3,11 @@ from __future__ import annotations
 import json
 from json import JSONDecodeError
 
-from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_POST
 from pydantic import ValidationError
+
+from core.models import Profile
 
 from .services import ImageRenderFailed, ImageSpec, ImageUsageLimitExceeded, render_image
 
@@ -16,7 +17,7 @@ def _profile_for_request(request: HttpRequest):
         return None
     try:
         return request.user.profile
-    except ObjectDoesNotExist:
+    except Profile.DoesNotExist:
         return None
 
 
