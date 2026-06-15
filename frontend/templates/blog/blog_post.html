@@ -4,7 +4,7 @@
 
 {% block meta %}
 {% site_url blog_post.get_absolute_url as page_url %}
-{% og_image_url blog_post.title blog_post.description style="base" font="markerfelt" site="x" as post_og_image %}
+{% og_image_url as post_og_image %}
 <title>{{ blog_post.title }} | OSIG Blog</title>
 <meta name="description" content="{{ blog_post.description }}" />
 <meta name="robots" content="index, follow" />
@@ -42,7 +42,7 @@
 {% block schema %}
 {% site_url blog_post.get_absolute_url as page_url %}
 {% absolute_static "vendors/images/logo.png" as logo_url %}
-{% og_image_url blog_post.title blog_post.description style="base" font="markerfelt" site="x" as post_og_image %}
+{% og_image_url as post_og_image %}
 <script type="application/ld+json">
   {
     "@context": "https://schema.org",

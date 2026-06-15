@@ -15,7 +15,7 @@
   {% block meta %}
   {% site_url "/" as home_url %}
   {% absolute_static "vendors/images/logo-square.png" as logo_square_url %}
-  {% og_image_url "OSIG Agent Image Infrastructure" "Generate deterministic social preview images through MCP and structured image specs." image_url=logo_square_url as default_og_image %}
+  {% og_image_url image_url=logo_square_url as default_og_image %}
   <title>OSIG | Agent Image Infrastructure</title>
   <meta name="description" content="Generate deterministic Open Graph and social preview images through MCP, structured specs, and code-rendered templates." />
   <meta name="robots" content="index, follow" />
@@ -191,7 +191,7 @@
   {% site_url "/" as home_url %}
   {% absolute_static "vendors/images/logo.png" as logo_url %}
   {% absolute_static "vendors/images/logo-square.png" as logo_square_url %}
-  {% og_image_url "OSIG Agent Image Infrastructure" "Generate deterministic social preview images through MCP and structured image specs." image_url=logo_square_url as default_og_image %}
+  {% og_image_url image_url=logo_square_url as default_og_image %}
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",

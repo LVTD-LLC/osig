@@ -35,14 +35,5 @@ def absolute_static(context, path):
 
 
 @register.simple_tag(takes_context=True)
-def og_image_url(
-    context,
-    title,
-    subtitle="",
-    style="logo",
-    font="markerfelt",
-    site="x",
-    image_url="",
-    eyebrow="",
-):
+def og_image_url(context, image_url=""):
     return image_url or absolute_static(context, "vendors/images/logo-square.png")
