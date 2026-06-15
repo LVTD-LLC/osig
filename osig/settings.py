@@ -91,6 +91,7 @@ INSTALLED_APPS = [
     "djstripe",
     "django_q",
     "django_extensions",
+    "agent_images.apps.AgentImagesConfig",
     "core.apps.CoreConfig",
 ]
 

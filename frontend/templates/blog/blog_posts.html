@@ -4,7 +4,7 @@
 {% block meta %}
 {% site_url request.path as page_url %}
 {% absolute_static "vendors/images/logo-square.png" as logo_square_url %}
-{% og_image_url "OSIG Blog" "Guides and tutorials about Open Graph images, Twitter cards, and social preview optimization." image_url=logo_square_url as page_og_image %}
+{% og_image_url image_url=logo_square_url as page_og_image %}
 <title>Open Graph Image Guides and Tutorials | OSIG Blog</title>
 <meta name="description" content="Read OSIG guides about Open Graph images, Twitter cards, social preview design, and dynamic image generation for websites." />
 <meta name="robots" content="index, follow" />

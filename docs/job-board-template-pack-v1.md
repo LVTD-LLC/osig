@@ -17,7 +17,7 @@ All templates accept:
 - `eyebrow`
 - `image_or_logo` (alias for `image_url`)
 
-Existing `/g` flows remain backward compatible (`base`/`logo` still unchanged).
+The templates are available through MCP tools and the Agent Image Studio.
 
 ## Safe truncation
 
@@ -29,8 +29,15 @@ Long text is normalized and truncated before render:
 
 This prevents overflow while keeping output deterministic for caching.
 
-## Example URL
+## Example spec
 
-```text
-/g?style=job_logo&site=x&title=Senior%20Django%20Engineer&subtitle=Ship%20production%20systems&eyebrow=Remote&image_or_logo=https://example.com/logo.png
+```json
+{
+  "style": "job_logo",
+  "site": "x",
+  "title": "Senior Django Engineer",
+  "subtitle": "Ship production systems",
+  "eyebrow": "Remote",
+  "image_or_logo": "https://example.com/logo.png"
+}
 ```

@@ -8,7 +8,7 @@ The product exists in a future where each person has an AI agent that builds app
 
 ## Product Shape
 
-The primary interface is a hosted MCP/API service. The web app supports that service with account setup, API keys, billing, docs, examples, diagnostics, and a playground. The old direct `/g` endpoint can remain as a compatibility and rendering surface, but new product thinking should not revolve around users hand-building query strings.
+The primary interface is a hosted MCP/API service. The web app supports that service with account setup, API keys, billing, docs, examples, diagnostics, and an Agent Image Studio. The old direct `/g` endpoint has been removed so new product thinking does not revolve around users or agents hand-building query strings.
 
 ## What Should Never Drift
 
@@ -38,6 +38,6 @@ The primary interface is a hosted MCP/API service. The web app supports that ser
 ## Outcome-Level Success
 
 - An agent can add polished OG images to a repo faster and cheaper than using a model.
-- A developer can trust OSIG's signed URLs in production metadata.
+- A developer can trust OSIG's exported image bytes in production metadata.
 - A self-hoster can adapt the open source renderer without relying on OSIG cloud.
-- Paid hosted users understand what they are paying for: no watermark, higher quotas, reliable hosted generation, signed URLs, and agent-friendly tooling.
+- Paid hosted users understand what they are paying for: no watermark, higher quotas, reliable hosted generation, and agent-friendly tooling.

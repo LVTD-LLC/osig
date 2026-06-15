@@ -9,5 +9,4 @@ plugins:
 nav:
   - index.md
   - getting-started.md
-  - human-usage.md
   - agent-mcp.md

@@ -1,6 +1,7 @@
 from django.urls import path
 from django.views.generic import RedirectView
 
+from agent_images import views as agent_image_views
 from core import views
 from core.api.views import api
 
@@ -10,9 +11,9 @@ urlpatterns = [
     path("settings", views.UserSettingsView.as_view(), name="settings"),
     path("how-to/", RedirectView.as_view(pattern_name="how_to", permanent=True), name="how_to_trailing_slash_redirect"),
     path("how-to", views.HowToView.as_view(), name="how_to"),
-    path("onboarding", views.OnboardingWizardView.as_view(), name="onboarding_wizard"),
     # api
     path("api/", api.urls),
+    path("api/studio/render", agent_image_views.render_studio_image, name="studio_render"),
     # blog
     path("blog/", views.BlogView.as_view(), name="blog_posts"),
     path(
@@ -38,5 +39,4 @@ urlpatterns = [
     ),
     # app
     path("blank-square.png", views.blank_square_image, name="blank_square_image"),
-    path("g", views.generate_image, name="generate_image"),
 ]

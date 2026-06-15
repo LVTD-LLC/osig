@@ -1,5 +1,3 @@
-from urllib.parse import urlencode
-
 from django import template
 from django.conf import settings
 from django.templatetags.static import static
@@ -37,27 +35,5 @@ def absolute_static(context, path):
 
 
 @register.simple_tag(takes_context=True)
-def og_image_url(
-    context,
-    title,
-    subtitle="",
-    style="logo",
-    font="markerfelt",
-    site="x",
-    image_url="",
-    eyebrow="",
-):
-    params = {
-        "site": site,
-        "style": style,
-        "font": font,
-        "title": title,
-    }
-    if subtitle:
-        params["subtitle"] = subtitle
-    if eyebrow:
-        params["eyebrow"] = eyebrow
-    if image_url:
-        params["image_url"] = image_url
-
-    return f"{_origin(context)}/g?{urlencode(params)}"
+def og_image_url(context, image_url=""):
+    return image_url or absolute_static(context, "vendors/images/logo-square.png")

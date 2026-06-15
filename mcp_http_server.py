@@ -12,7 +12,7 @@ def main() -> None:
 
     django.setup()
 
-    from core.mcp import mcp
+    from agent_images.mcp import mcp
 
     mcp.run(
         transport="http",

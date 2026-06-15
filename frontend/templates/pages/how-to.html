@@ -4,262 +4,116 @@
 {% block meta %}
 {% site_url request.path as page_url %}
 {% absolute_static "vendors/images/logo-square.png" as logo_square_url %}
-{% og_image_url "How to Generate Open Graph Images" "Learn how to create and add OSIG social preview images to your site with URL parameters and examples." image_url=logo_square_url as page_og_image %}
-<title>How to Generate Open Graph Images | OSIG</title>
-<meta name="description" content="Learn how to generate Open Graph and Twitter card images with OSIG URL parameters, examples, styles, fonts, and integration notes." />
+{% og_image_url image_url=logo_square_url as page_og_image %}
+<title>MCP Docs | OSIG</title>
+<meta name="description" content="Use OSIG from AI agents through MCP. Discover templates, normalize image specs, render previews, and export image bytes." />
 <meta name="robots" content="index, follow" />
 <link rel="canonical" href="{{ page_url }}" />
 
 <meta property="og:type" content="website" />
-<meta property="og:title" content="How to Generate Open Graph Images | OSIG" />
+<meta property="og:title" content="MCP Docs | OSIG" />
 <meta property="og:url" content="{{ page_url }}" />
-<meta property="og:description" content="Learn how to generate Open Graph and Twitter card images with OSIG URL parameters, examples, styles, fonts, and integration notes." />
+<meta property="og:description" content="Use OSIG from AI agents through MCP. Discover templates, normalize image specs, render previews, and export image bytes." />
 <meta property="og:image" content="{{ page_og_image }}" />
 <meta property="og:locale" content="en_US" />
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:creator" content="@rasulkireev" />
 <meta name="twitter:site" content="@rasulkireev" />
-<meta name="twitter:title" content="How to Generate Open Graph Images | OSIG" />
-<meta name="twitter:description" content="Learn how to generate Open Graph and Twitter card images with OSIG URL parameters, examples, styles, fonts, and integration notes." />
+<meta name="twitter:title" content="MCP Docs | OSIG" />
+<meta name="twitter:description" content="Use OSIG from AI agents through MCP. Discover templates, normalize image specs, render previews, and export image bytes." />
 <meta name="twitter:image" content="{{ page_og_image }}" />
 {% endblock meta %}
 
 {% block content %}
-<section class="site-container grid gap-8 py-12 lg:grid-cols-[0.75fr_1.25fr] lg:py-16">
+<section class="site-container grid gap-8 py-12 lg:grid-cols-[0.72fr_1.28fr] lg:py-16">
   <aside class="hidden lg:block">
-    <div class="sticky top-24 space-y-2 text-sm">
+    <nav class="sticky top-24 space-y-2 text-sm" aria-label="Docs sections">
       <a href="#endpoint" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Endpoint</a>
-      <a href="#parameters" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Parameters</a>
-      <a href="#examples" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Examples</a>
-      <a href="#output-controls" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Output controls</a>
-      <a href="#signed-urls" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Signed URLs</a>
-      <a href="#meta-tags" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Meta tags</a>
-      <a href="#validation" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Validation</a>
-    </div>
+      <a href="#workflow" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Workflow</a>
+      <a href="#tools" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Tools</a>
+      <a href="#spec" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Image spec</a>
+      <a href="#local" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Local server</a>
+    </nav>
   </aside>
 
   <div class="min-w-0">
-    <p class="page-kicker">Docs</p>
-    <h1 class="page-title mt-4">Publish OG images.</h1>
+    <p class="page-kicker">MCP docs</p>
+    <h1 class="page-title mt-4">Generate images without an image model.</h1>
     <p class="lede mt-6 max-w-3xl">
-      Use the generator for one image, or call the endpoint directly from your site. Most previews need a title, subtitle, template, and optional image URL.
+      OSIG exposes deterministic Open Graph image generation as agent tools. Agents send structured text and asset URLs, then receive metadata and image bytes they can save into a repo.
     </p>
 
     <div class="doc-prose mt-10">
       <h2 id="endpoint">Endpoint</h2>
-      <p>All generated images are served from the same endpoint.</p>
-      <pre class="code-block"><code>https://osig.app/g</code></pre>
+      <p>The hosted MCP endpoint is mounted at:</p>
+      <pre class="code-block"><code>https://osig.app/mcp/</code></pre>
+      <p>Hosted MCP accepts a profile key with either <code>X-API-Key</code> or <code>Authorization: Bearer ...</code>. The current public trial exposes only image-generation capabilities.</p>
 
-      <h2 id="parameters">Parameters</h2>
-      <p>Parameters vary by template. Empty values still render, but useful text and an image source usually produce a better preview.</p>
+      <h2 id="workflow">Workflow</h2>
+      <ol>
+        <li>Call <code>get_image_contract</code> or <code>list_image_templates</code>.</li>
+        <li>Build an image spec with explicit template, dimensions, copy, format, and optional asset URL.</li>
+        <li>Call <code>normalize_image_spec</code> to check defaults and warnings.</li>
+        <li>Call <code>render_image_preview</code> while iterating.</li>
+        <li>Call <code>export_image</code> when the agent is ready to write an asset into the repository.</li>
+      </ol>
 
+      <h2 id="tools">Tools</h2>
       <div class="not-prose overflow-x-auto rounded-lg border border-[var(--osig-line)] bg-white">
         <table class="min-w-full divide-y divide-[var(--osig-line)] text-left text-sm">
           <thead class="bg-[var(--osig-surface-soft)] text-[var(--osig-muted)]">
             <tr>
-              <th class="px-4 py-3 font-bold">Name</th>
+              <th class="px-4 py-3 font-bold">Tool</th>
               <th class="px-4 py-3 font-bold">Use</th>
-              <th class="px-4 py-3 font-bold">Common values</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-[var(--osig-line)] text-[var(--osig-muted)]">
             <tr>
-              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">style</td>
-              <td class="px-4 py-3">Template to render.</td>
-              <td class="px-4 py-3">base, logo, job_classic, job_logo, job_clean</td>
+              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">get_image_contract</td>
+              <td class="px-4 py-3">Discover choices, fields, dimensions, and the recommended agent loop.</td>
             </tr>
             <tr>
-              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">site</td>
-              <td class="px-4 py-3">Output dimensions.</td>
-              <td class="px-4 py-3">x: 1600 x 900, meta: 1200 x 630</td>
+              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">list_image_templates</td>
+              <td class="px-4 py-3">Choose a suitable layout before rendering.</td>
             </tr>
             <tr>
-              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">font</td>
-              <td class="px-4 py-3">Font used for image text.</td>
-              <td class="px-4 py-3">helvetica, markerfelt, papyrus</td>
+              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">normalize_image_spec</td>
+              <td class="px-4 py-3">Validate the spec and return canonical render parameters.</td>
             </tr>
             <tr>
-              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">title</td>
-              <td class="px-4 py-3">Main headline.</td>
-              <td class="px-4 py-3">Article title, job title, product name</td>
+              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">render_image_preview</td>
+              <td class="px-4 py-3">Render a preview with metadata and optional base64 bytes.</td>
             </tr>
             <tr>
-              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">subtitle</td>
-              <td class="px-4 py-3">Supporting text, truncated when needed.</td>
-              <td class="px-4 py-3">Summary, role detail, short description</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">eyebrow</td>
-              <td class="px-4 py-3">Small context label inside the generated image.</td>
-              <td class="px-4 py-3">Article, Remote, Launch, Guide</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">image_url</td>
-              <td class="px-4 py-3">Background image or logo URL.</td>
-              <td class="px-4 py-3">Public image URL</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">key</td>
-              <td class="px-4 py-3">Authenticated profile key from settings.</td>
-              <td class="px-4 py-3">Your OSIG token</td>
+              <td class="px-4 py-3 font-mono text-[var(--osig-ink)]">export_image</td>
+              <td class="px-4 py-3">Render final image bytes, content type, dimensions, byte size, and hash.</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <h2 id="examples">Examples</h2>
-
-      <h3 id="base">Base style</h3>
-      <p>Use the base style for articles, tutorials, essays, and general pages that have a strong cover image.</p>
-      <img
-        src="{% static 'vendors/images/base-example.png' %}"
-        alt="Base OG image example"
-        width="800"
-        height="450"
-        loading="lazy"
-        decoding="async"
-      />
-      <pre class="code-block"><code>https://osig.app/g?
-  site=x
-  &amp;style=base
-  &amp;font=helvetica
-  &amp;title=10 Years of Great Books
-  &amp;subtitle=I'm starting a 10 Year Reading Plan.
-  &amp;eyebrow=Article
-  &amp;image_url=https://example.com/cover.png</code></pre>
-
-      <h3 id="logo">Logo style</h3>
-      <p>Use the logo style for companies, projects, job posts, and pages where a brand mark matters more than a full background image.</p>
-      <img
-        src="{% static 'vendors/images/logo-example.png' %}"
-        alt="Logo OG image example"
-        width="796"
-        height="445"
-        loading="lazy"
-        decoding="async"
-      />
-      <pre class="code-block"><code>https://osig.app/g?
-  site=x
-  &amp;style=logo
-  &amp;font=markerfelt
-  &amp;title=Narrative
-  &amp;subtitle=Founding Senior Software Engineer
-  &amp;image_url=https://example.com/logo.png</code></pre>
-
-      <h2 id="output-controls">Output controls</h2>
-      <p>Use output controls when your publishing platform needs JPEG output or a smaller file.</p>
-      <ul>
-        <li><strong>format</strong>: png or jpeg. The default is png.</li>
-        <li><strong>quality</strong>: 1 to 100. JPEG defaults to 85 when omitted.</li>
-        <li><strong>max_kb</strong>: best-effort file size target, currently tuned for JPEG.</li>
-        <li><strong>v</strong>: cache-busting version token. Change this when preview content changes.</li>
-      </ul>
-
-      <h2 id="signed-urls">Signed URLs</h2>
-      <p>Signed URLs protect generated previews from tampering. Send the desired image parameters to the signing endpoint and embed the returned URL.</p>
-      <pre class="code-block"><code>POST /api/sign
-{
-  "params": {
-    "style": "logo",
-    "site": "x",
-    "title": "Narrative",
-    "format": "jpeg",
-    "quality": 80
-  },
-  "expires_in_seconds": 3600
+      <h2 id="spec">Image spec</h2>
+      <pre class="code-block"><code>{
+  "style": "job_logo",
+  "site": "x",
+  "font": "helvetica",
+  "title": "Senior Django Engineer",
+  "subtitle": "Build deterministic tools for agents.",
+  "eyebrow": "Remote · Full-time",
+  "image_url": "https://example.com/logo.png",
+  "format": "png"
 }</code></pre>
 
-      <h2 id="meta-tags">Meta tags</h2>
-      <p>Use the generated image URL in Open Graph and Twitter card metadata.</p>
-      <pre class="code-block"><code>&lt;meta property="og:image" content="{ generated_image_url }" /&gt;
-&lt;meta name="twitter:card" content="summary_large_image" /&gt;
-&lt;meta name="twitter:image" content="{ generated_image_url }" /&gt;</code></pre>
+      <p>The renderer supports <code>base</code>, <code>logo</code>, <code>job_classic</code>, <code>job_logo</code>, and <code>job_clean</code>. Dimensions are <code>x</code> for 800 x 450 output and <code>meta</code> for 600 x 315 output.</p>
 
-      <h2>Fonts</h2>
-      <div class="not-prose grid gap-4 sm:grid-cols-3">
-        <div class="panel p-4">
-          <p class="mb-3 text-sm font-bold text-[var(--osig-ink)]">Helvetica</p>
-          <img
-            src="{% static 'vendors/images/helvetica-example.png' %}"
-            alt="Helvetica font example"
-            width="365"
-            height="96"
-            loading="lazy"
-            decoding="async"
-          />
-        </div>
-        <div class="panel p-4">
-          <p class="mb-3 text-sm font-bold text-[var(--osig-ink)]">Marker Felt</p>
-          <img
-            src="{% static 'vendors/images/markerfelt-example.png' %}"
-            alt="Marker Felt font example"
-            width="362"
-            height="98"
-            loading="lazy"
-            decoding="async"
-          />
-        </div>
-        <div class="panel p-4">
-          <p class="mb-3 text-sm font-bold text-[var(--osig-ink)]">Papyrus</p>
-          <img
-            src="{% static 'vendors/images/papyrus-example.png' %}"
-            alt="Papyrus font example"
-            width="276"
-            height="88"
-            loading="lazy"
-            decoding="async"
-          />
-        </div>
-      </div>
+      <h2 id="local">Local server</h2>
+      <p>Run the local stdio MCP server from the repository root:</p>
+      <pre class="code-block"><code>uv run python mcp_server.py</code></pre>
 
-      <h2 id="validation">Validation checklist</h2>
-      <ul>
-        <li>Bump <strong>v</strong> when image content changes.</li>
-        <li>Regenerate a signed URL if signed parameters changed.</li>
-        <li>Deploy metadata with the new image URL.</li>
-        <li>Open social validators before sharing the page.</li>
-      </ul>
-      <p>
-        Start with the <a class="link" href="{% url 'onboarding_wizard' %}">onboarding wizard</a> when you want OSIG to generate meta tags and validation links for you.
-      </p>
+      <p>Inspect the local tool contract with FastMCP:</p>
+      <pre class="code-block"><code>uv run fastmcp list --command "uv run python mcp_server.py"</code></pre>
     </div>
   </div>
 </section>
 {% endblock content %}
-
-{% block schema %}
-{% site_url request.path as page_url %}
-<script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "HowTo",
-    "name": "How to Generate Open Graph Images with OSIG",
-    "description": "Learn how to generate Open Graph and Twitter card images with OSIG URL parameters, examples, styles, fonts, and integration notes.",
-    "url": "{{ page_url }}",
-    "author": {
-      "@type": "Person",
-      "givenName": "Rasul",
-      "familyName": "Kireev",
-      "url": "https://rasulkireev.com/"
-    },
-    "step": [
-      {
-        "@type": "HowToStep",
-        "name": "Choose image settings",
-        "text": "Select the image size, style, font, and text parameters for the social preview image."
-      },
-      {
-        "@type": "HowToStep",
-        "name": "Generate the image URL",
-        "text": "Use the OSIG generator to create a URL that returns the generated PNG image."
-      },
-      {
-        "@type": "HowToStep",
-        "name": "Add the URL to meta tags",
-        "text": "Place the generated image URL in your Open Graph and Twitter card image tags."
-      }
-    ]
-  }
-  </script>
-{% endblock schema %}

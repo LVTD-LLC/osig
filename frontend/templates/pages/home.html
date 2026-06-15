@@ -2,227 +2,195 @@
 {% load webpack_loader static %}
 
 {% block content %}
-<section class="site-container grid gap-10 py-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:py-16">
-  <div>
-    <p class="page-kicker">Open Graph image generator</p>
-    <h1 class="page-title mt-4">Generate social preview images from a URL.</h1>
-    <p class="lede mt-6 max-w-2xl">
-      OSIG turns titles, subtitles, logos, and cover images into Open Graph and Twitter card images you can paste into any site.
+<section class="site-container py-8 lg:py-10">
+  <div class="grid gap-6 lg:grid-cols-[0.72fr_1.28fr] lg:items-end">
+    <div>
+      <p class="page-kicker">Agent Image Studio</p>
+      <h1 class="page-title mt-3">Code-rendered social images for agents.</h1>
+    </div>
+    <p class="lede max-w-3xl lg:justify-self-end">
+      Generate Open Graph images from structured text, preview them deterministically, then export bytes an agent can save into a repository.
     </p>
-    <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-      <a href="#generator" class="btn-primary">Open generator</a>
-      <a href="{% url 'how_to' %}" class="btn-secondary">Read docs</a>
-    </div>
-    <dl class="mt-10 grid gap-4 text-sm sm:grid-cols-3">
-      <div class="border-t border-[var(--osig-line)] pt-4">
-        <dt class="font-bold text-[var(--osig-ink)]">URL based</dt>
-        <dd class="mt-1 text-[var(--osig-muted)]">Works from query parameters, no editor required.</dd>
-      </div>
-      <div class="border-t border-[var(--osig-line)] pt-4">
-        <dt class="font-bold text-[var(--osig-ink)]">Signed output</dt>
-        <dd class="mt-1 text-[var(--osig-muted)]">Generate tamper-proof URLs for production pages.</dd>
-      </div>
-      <div class="border-t border-[var(--osig-line)] pt-4">
-        <dt class="font-bold text-[var(--osig-ink)]">Copy-ready</dt>
-        <dd class="mt-1 text-[var(--osig-muted)]">Use the wizard when you need full OG tags.</dd>
-      </div>
-    </dl>
-  </div>
-
-  <div class="panel overflow-hidden">
-    <div class="border-b border-[var(--osig-line)] bg-[var(--osig-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--osig-muted)]">
-      Generated example
-    </div>
-    <div class="grid gap-4 p-4">
-      <img
-        src="{% static 'vendors/images/base-example.png' %}"
-        class="w-full rounded-lg border border-[var(--osig-line)]"
-        alt="Example OSIG output for an article social preview"
-        width="800"
-        height="450"
-        decoding="async"
-      />
-      <pre class="code-block whitespace-pre-wrap break-all"><code>https://osig.app/g?
-style=base&amp;site=x
-title=10 Years of Great Books</code></pre>
-    </div>
   </div>
 </section>
 
-<section id="generator" class="site-container py-10">
-  <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-    <div>
-      <p class="page-kicker">Try it now</p>
-      <h2 class="section-title mt-3">Build the image URL.</h2>
-    </div>
-    <p class="lede max-w-xl">
-      Fill the fields, generate a preview, then copy the URL. Logged-in users automatically include their key.
-    </p>
-  </div>
+<section
+  id="studio"
+  class="site-container pb-14"
+  data-controller="agent-studio"
+  data-agent-studio-render-url-value="{% url 'studio_render' %}"
+>
+  <div class="studio-shell">
+    <aside class="studio-sidebar">
+      <div>
+        <h2 class="studio-heading">MCP</h2>
+        <p class="studio-copy mt-2">Use the hosted Streamable HTTP endpoint or run the local stdio server beside this repo.</p>
+      </div>
 
-  <div
-    data-controller="image-generator"
-    class="panel grid gap-0 overflow-hidden lg:grid-cols-[0.95fr_1.05fr]"
-    data-image-generator-user-key-value="{{ user_key|default:'' }}"
-  >
-    <form data-action="submit->image-generator#generate" class="space-y-6 p-5 lg:p-6">
-      {% csrf_token %}
-      <div class="grid gap-4 sm:grid-cols-3">
-        <div>
-          <label for="site" class="field-label">Size</label>
-          <select id="site" name="site" class="field">
-            {% for value, label in site_choices %}
-              <option value="{{ value }}">{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div>
-          <label for="style" class="field-label">Template</label>
-          <select id="style" name="style" class="field">
-            {% for value, label in style_choices %}
-              <option value="{{ value }}">{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div>
-          <label for="font" class="field-label">Font</label>
-          <select id="font" name="font" class="field">
-            {% for value, label in font_choices %}
-              <option value="{{ value }}">{{ label }}</option>
-            {% endfor %}
-          </select>
+      <div>
+        <label class="field-label" for="mcp-endpoint">Hosted endpoint</label>
+        <div class="copy-row">
+          <input id="mcp-endpoint" class="copy-field min-h-0" readonly value="{{ mcp_http_endpoint }}">
+          <button type="button" class="btn-secondary min-h-0 px-3" data-action="click->agent-studio#copyField" data-copy-source="mcp-endpoint">Copy</button>
         </div>
       </div>
 
-      <div class="grid gap-4 sm:grid-cols-2">
-        <div class="sm:col-span-2">
+      <div>
+        <label class="field-label" for="stdio-command">Local command</label>
+        <div class="copy-row">
+          <input id="stdio-command" class="copy-field min-h-0" readonly value="{{ mcp_stdio_command }}">
+          <button type="button" class="btn-secondary min-h-0 px-3" data-action="click->agent-studio#copyField" data-copy-source="stdio-command">Copy</button>
+        </div>
+      </div>
+
+      <div class="studio-note">
+        <span class="status-dot"></span>
+        <p>
+          {% if user.is_authenticated and user_key %}
+            Your profile key is applied to Studio renders. Hosted MCP accepts it as <code>X-API-Key</code> or bearer auth.
+          {% else %}
+            Trial renders are watermarked. Create an account when you want hosted quota and paid output state.
+          {% endif %}
+        </p>
+      </div>
+
+      {% if user.is_authenticated and user_key %}
+      <div>
+        <label class="field-label" for="profile-key">Profile key</label>
+        <div class="copy-row">
+          <input id="profile-key" class="copy-field min-h-0" readonly value="{{ user_key }}">
+          <button type="button" class="btn-secondary min-h-0 px-3" data-action="click->agent-studio#copyField" data-copy-source="profile-key">Copy</button>
+        </div>
+      </div>
+      {% endif %}
+    </aside>
+
+    <div class="studio-main">
+      <form data-agent-studio-target="form" data-action="submit->agent-studio#render" class="studio-editor">
+        {% csrf_token %}
+        {% if user_key %}
+          <input type="hidden" name="key" value="{{ user_key }}">
+        {% endif %}
+
+        <div class="studio-section-header">
+          <div>
+            <h2 class="studio-heading">Image spec</h2>
+            <p class="studio-copy mt-1">These fields mirror the MCP tool schema.</p>
+          </div>
+          <button type="submit" class="btn-primary">Render preview</button>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-3">
+          <div>
+            <label for="style" class="field-label">Template</label>
+            <select id="style" name="style" class="field">
+              {% for value, label in style_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label for="site" class="field-label">Dimensions</label>
+            <select id="site" name="site" class="field">
+              {% for value, label in site_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label for="format" class="field-label">Format</label>
+            <select id="format" name="format" class="field">
+              <option value="png">PNG</option>
+              <option value="jpeg">JPEG</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-3">
+          <div>
+            <label for="font" class="field-label">Font</label>
+            <select id="font" name="font" class="field">
+              {% for value, label in font_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label for="quality" class="field-label">Quality</label>
+            <input type="number" id="quality" name="quality" class="field" min="1" max="100" placeholder="85">
+          </div>
+          <div>
+            <label for="max_kb" class="field-label">Max KB</label>
+            <input type="number" id="max_kb" name="max_kb" class="field" min="1" placeholder="Optional">
+          </div>
+        </div>
+
+        <div>
           <label for="title" class="field-label">Title</label>
-          <input type="text" id="title" name="title" class="field" placeholder="Hiring: Senior Django Engineer">
+          <input type="text" id="title" name="title" class="field" value="Senior Django Engineer" maxlength="500">
         </div>
 
-        <div class="sm:col-span-2">
+        <div>
           <label for="subtitle" class="field-label">Subtitle</label>
-          <input type="text" id="subtitle" name="subtitle" class="field" placeholder="Build reliable product features and own the roadmap.">
+          <textarea id="subtitle" name="subtitle" class="field min-h-[6rem]" maxlength="1000">Build deterministic tools for agents that ship production work.</textarea>
         </div>
 
-        <div>
-          <label for="eyebrow" class="field-label">Eyebrow</label>
-          <input type="text" id="eyebrow" name="eyebrow" class="field" placeholder="Remote · Full-time">
-        </div>
-
-        <div>
-          <label for="image_url" class="field-label">Image or logo URL</label>
-          <input type="url" id="image_url" name="image_url" class="field" placeholder="https://example.com/logo.png">
-        </div>
-      </div>
-
-      <div class="grid gap-4 sm:grid-cols-3">
-        <div>
-          <label for="format" class="field-label">Format</label>
-          <select id="format" name="format" class="field">
-            <option value="png">PNG</option>
-            <option value="jpeg">JPEG</option>
-          </select>
-        </div>
-        <div>
-          <label for="quality" class="field-label">JPEG quality</label>
-          <input type="number" id="quality" name="quality" class="field" min="1" max="100" placeholder="85">
-        </div>
-        <div>
-          <label for="max_kb" class="field-label">Max KB</label>
-          <input type="number" id="max_kb" name="max_kb" class="field" min="1" placeholder="Optional">
-        </div>
-      </div>
-
-      <button type="submit" class="btn-primary w-full">Generate image</button>
-    </form>
-
-    <div class="border-t border-[var(--osig-line)] bg-[var(--osig-surface-soft)] p-5 lg:border-l lg:border-t-0 lg:p-6">
-      <div class="sticky top-24 space-y-5">
-        <div>
-          <div class="mb-2 flex items-center justify-between gap-3">
-            <label class="field-label mb-0">Preview</label>
-            <span data-image-generator-target="status" class="text-xs font-semibold text-[var(--osig-soft)]">Ready</span>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label for="eyebrow" class="field-label">Eyebrow</label>
+            <input type="text" id="eyebrow" name="eyebrow" class="field" value="Remote · Full-time" maxlength="240">
           </div>
-          <div data-image-generator-target="generatedImage" class="preview-frame">
-            <div class="px-6 text-center">
-              <p class="font-semibold text-[var(--osig-ink)]">Generated image appears here.</p>
-              <p class="mt-2 text-sm text-[var(--osig-muted)]">Use a title and template first, then generate a preview.</p>
-            </div>
+          <div>
+            <label for="image_url" class="field-label">Image or logo URL</label>
+            <input type="url" id="image_url" name="image_url" class="field" placeholder="https://example.com/logo.png" maxlength="2000">
+          </div>
+        </div>
+      </form>
+
+      <section class="studio-output" aria-live="polite">
+        <div class="studio-section-header">
+          <div>
+            <h2 class="studio-heading">Output</h2>
+            <p class="studio-copy mt-1">Preview, metadata, and export payload.</p>
+          </div>
+          <span data-agent-studio-target="status" class="status-pill">Ready</span>
+        </div>
+
+        <div data-agent-studio-target="preview" class="preview-frame studio-preview">
+          <div class="px-6 text-center">
+            <p class="font-semibold text-[var(--osig-ink)]">No render yet</p>
+            <p class="mt-2 text-sm text-[var(--osig-muted)]">Submit the spec to render through the shared agent image service.</p>
           </div>
         </div>
 
-        <div>
-          <label for="generate-link" class="field-label">Generated URL</label>
-          <textarea id="generate-link" data-image-generator-target="generateLink" readonly class="copy-field" rows="10"></textarea>
-          <button type="button" data-image-generator-target="copyButton" data-action="click->image-generator#copyGenerateLink" class="btn-secondary mt-3 w-full">
-            Copy URL
-          </button>
+        <div data-agent-studio-target="warnings" class="hidden studio-warning"></div>
+
+        <div class="metadata-grid" data-agent-studio-target="metadata">
+          <div><span>Template</span><strong>base</strong></div>
+          <div><span>Size</span><strong>800 x 450</strong></div>
+          <div><span>Type</span><strong>image/png</strong></div>
+          <div><span>Hash</span><strong>waiting</strong></div>
         </div>
-      </div>
-    </div>
-  </div>
-</section>
 
-<section class="site-container grid gap-8 py-12 lg:grid-cols-[0.8fr_1.2fr] lg:py-16">
-  <div>
-    <p class="page-kicker">Publishing path</p>
-    <h2 class="section-title mt-3">From blank metadata to validated preview.</h2>
-  </div>
-  <div class="grid gap-4 md:grid-cols-3">
-    <div class="panel p-5">
-      <span class="step-pill">1</span>
-      <h3 class="mt-5 text-lg font-bold">Choose content</h3>
-      <p class="mt-2 text-sm leading-6 text-[var(--osig-muted)]">Add the title, subtitle, image, logo, and template that match the page.</p>
-    </div>
-    <div class="panel p-5">
-      <span class="step-pill">2</span>
-      <h3 class="mt-5 text-lg font-bold">Generate URL</h3>
-      <p class="mt-2 text-sm leading-6 text-[var(--osig-muted)]">Copy a direct image URL or use the wizard to create signed metadata.</p>
-    </div>
-    <div class="panel p-5">
-      <span class="step-pill">3</span>
-      <h3 class="mt-5 text-lg font-bold">Validate share</h3>
-      <p class="mt-2 text-sm leading-6 text-[var(--osig-muted)]">Open social validators before publishing so cached previews behave.</p>
+        <div>
+          <label for="studio-export" class="field-label">Repository payload</label>
+          <textarea id="studio-export" data-agent-studio-target="export" readonly class="copy-field min-h-[9rem]" placeholder="Rendered metadata and base64 output will appear here."></textarea>
+          <div class="mt-3 flex flex-col gap-3 sm:flex-row">
+            <button type="button" class="btn-secondary flex-1" data-action="click->agent-studio#copyExport" data-agent-studio-target="copyButton">Copy payload</button>
+            <button type="button" class="btn-secondary flex-1" data-action="click->agent-studio#downloadImage" data-agent-studio-target="downloadButton" disabled>Download image</button>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
-</section>
 
-<section class="site-container py-12">
-  <div class="grid gap-8 lg:grid-cols-2 lg:items-start">
-    <div>
-      <p class="page-kicker">Template examples</p>
-      <h2 class="section-title mt-3">Use images for articles, jobs, products, and company pages.</h2>
-      <p class="lede mt-5">
-        The same endpoint supports multiple styles and fonts. Start with the generator when you need one image, or use signed API output for repeatable publishing.
-      </p>
-      <div class="mt-6 flex flex-col gap-3 sm:flex-row">
-        <a href="{% url 'onboarding_wizard' %}" class="btn-primary">Create OG tags</a>
-        <a href="{% url 'how_to' %}#parameters" class="btn-secondary">View parameters</a>
-      </div>
-    </div>
-    <div class="grid gap-4">
-      <img
-        src="{% static 'vendors/images/logo-example.png' %}"
-        class="w-full rounded-lg border border-[var(--osig-line)]"
-        alt="Example OSIG logo template output"
-        width="796"
-        height="445"
-        loading="lazy"
-        decoding="async"
-      />
-      <img
-        src="{% static 'vendors/images/no-params-example.png' %}"
-        class="w-full rounded-lg border border-[var(--osig-line)]"
-        alt="Example OSIG output when no parameters are supplied"
-        width="797"
-        height="447"
-        loading="lazy"
-        decoding="async"
-      />
-    </div>
+  <div class="template-strip">
+    {% for template in template_cards %}
+      <article>
+        <h3>{{ template.name }}</h3>
+        <p>{{ template.description }}</p>
+      </article>
+    {% endfor %}
   </div>
 </section>
 

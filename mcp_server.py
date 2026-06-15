@@ -8,7 +8,7 @@ import django
 
 django.setup()
 
-from core.mcp import mcp
+from agent_images.mcp import mcp
 
 if __name__ == "__main__":
     mcp.run()
