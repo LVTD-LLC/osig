@@ -66,6 +66,19 @@ def test_studio_render_api_rejects_invalid_specs(client):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("payload", [None, [], 42, "string"])
+def test_studio_render_api_rejects_non_object_json(client, payload):
+    response = client.post(
+        "/api/studio/render",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"] == "invalid_json"
+
+
+@pytest.mark.django_db
 def test_studio_render_api_handles_authenticated_user_without_profile(client, monkeypatch):
     import agent_images.services as agent_services
 

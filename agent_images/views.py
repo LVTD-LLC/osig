@@ -28,6 +28,9 @@ def render_studio_image(request: HttpRequest) -> JsonResponse:
     except (UnicodeDecodeError, JSONDecodeError):
         return JsonResponse({"error": "invalid_json", "message": "Request body must be valid JSON."}, status=400)
 
+    if not isinstance(payload, dict):
+        return JsonResponse({"error": "invalid_json", "message": "Request body must be a JSON object."}, status=400)
+
     try:
         spec = ImageSpec.model_validate(payload.get("spec") or payload)
         result = render_image(spec, profile=_profile_for_request(request), include_image_base64=True)
