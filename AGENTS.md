@@ -14,7 +14,7 @@ The hosted cloud product should be paid by default for production use. The repos
 
 - Treat MCP and API workflows as the primary product surface.
 - Treat the web UI as a playground, docs, account, billing, and diagnostics surface.
-- Treat `/g` as a rendering and backwards-compatibility endpoint, not the main product concept for future work.
+- Treat MCP tools, the Studio API, and deterministic export payloads as the product surface. Do not rebuild the removed `/g` URL-generator flow unless explicitly asked.
 - Prefer deterministic code-generated images over model-generated images. The value is cost, repeatability, speed, and easy repo integration for agents.
 - Start with Open Graph and social preview images, but keep boundaries clean enough for future code-generated image types.
 
@@ -46,6 +46,7 @@ Run tests:
 make test
 make test core/tests/test_mcp.py
 make test core/tests/test_generate_image_features.py
+make test core/tests/test_mcp.py
 ```
 
 Run the local stdio MCP server:
@@ -71,7 +72,7 @@ npm run build
 - Use `rg` for code search.
 - Read the existing implementation before changing behavior. The most important files are listed in `STRUCTURE.md`.
 - Keep changes close to existing module boundaries.
-- Add or update tests for behavior changes, especially MCP tools, `/g`, signing, usage quota, auth, and render error handling.
+- Add or update tests for behavior changes, especially MCP tools, Studio rendering, usage quota, auth, and render error handling.
 - Prefer `make test <path>` for focused verification and `make test` before finishing larger work.
 - Do not stage unrelated files or revert user changes.
 
@@ -92,14 +93,14 @@ npm run build
 - Hosted production usage should require an account and paid entitlement.
 - Watermarking is the default unpaid/free enforcement mechanism for rendered images.
 - Quotas should remain visible and enforceable through profile usage records and response headers.
-- Do not introduce new unlimited free hosted paths around watermark, quota, signing, or MCP authentication.
+- Do not introduce new unlimited free hosted paths around watermark, quota, export, or MCP authentication.
 - Any free trial or demo, including the current unauthenticated MCP trial, should be deliberately bounded by quota, watermark, expiration, limited tool scope, or non-production positioning.
 
 ## Risky Actions
 
 Ask for explicit approval before:
 
-- Removing or breaking current public `/g` behavior without a migration plan.
+- Reintroducing current public `/g` behavior without an explicit product decision.
 - Weakening signature verification, API key handling, quotas, watermark rules, or expanding unauthenticated MCP scope.
 - Exposing generated images, profile keys, customer data, or render history across profiles.
 - Adding new paid-plan behavior without making entitlement and failure states clear.
@@ -111,7 +112,7 @@ Ask for explicit approval before:
 Before finishing meaningful changes, verify:
 
 - MCP/API contracts still support agent-first discovery, preview, and publish flows.
-- `/g` compatibility is preserved or intentionally documented as changed.
+- The removed `/g` compatibility path remains intentionally documented as changed.
 - Generated image layouts handle long text, missing images, invalid image URLs, and both `x` and `meta` dimensions.
-- Quota, watermark, and signed URL behavior match `PRODUCT.md` and `TECH.md`.
+- Quota, watermark, and export behavior match `PRODUCT.md` and `TECH.md`.
 - Docs and steering files stay in sync with code.

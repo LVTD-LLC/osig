@@ -4,7 +4,7 @@
 
 OSIG is AI-agent-first infrastructure for generating deterministic social preview images from structured text, remote assets, and reusable code templates. The product lets an AI agent avoid expensive model image generation when the needed output is a clean Open Graph or Twitter card image.
 
-The current app already supports URL rendering, signed URLs, a hosted FastMCP server, a local stdio MCP entrypoint, usage metering, quotas, Stripe subscriptions, and render observability. Future product work should make the MCP/API workflow the primary experience and keep the web UI focused on setup, docs, billing, examples, and diagnostics.
+The current app supports a hosted FastMCP server, a local stdio MCP entrypoint, a Studio render API, usage metering, quotas, Stripe subscriptions, and render observability. Future product work should make the MCP/API workflow the primary experience and keep the web UI focused on setup, docs, billing, examples, and diagnostics.
 
 ## Users
 
@@ -16,7 +16,7 @@ Secondary users are humans configuring accounts, API keys, billing, self-hosting
 
 Agents can ask image models to generate social preview images, but that is often expensive, slow, inconsistent, and hard to revise precisely. Most OG images need layout, typography, background/logo placement, dimensions, and text handling more than they need generative art.
 
-OSIG should give agents a cheaper path: provide text and parameters, render with code, inspect the result, and publish the output as bytes or a signed URL.
+OSIG should give agents a cheaper path: provide text and parameters, render with code, inspect the result, and publish the output as image bytes saved into the target project.
 
 ## Core Workflows
 
@@ -43,11 +43,11 @@ The default unpaid behavior is watermarking. Paid plans should remove watermarks
 
 ## In Scope
 
-- MCP tools for image contract discovery, normalization, preview rendering, signed URL creation, and recent image listing.
+- MCP tools for image contract discovery, template listing, normalization, preview rendering, and final image export.
 - API endpoints for render metrics and integration helpers that should not be exposed as unauthenticated MCP tools.
 - Open Graph and social preview templates, starting with article, logo, and job-board styles.
 - Deterministic code-rendered PNG/JPEG output.
-- Usage metering, quota enforcement, paid access, watermarking, and signed URL workflows.
+- Usage metering, quota enforcement, paid access, watermarking, and deterministic export workflows.
 - Human-facing setup, docs, playground, billing, account, validation, and observability screens.
 - CMS/helper integrations when they map common content fields into OSIG's structured parameters.
 

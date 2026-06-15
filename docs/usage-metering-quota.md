@@ -1,6 +1,6 @@
 # Usage Metering + Quota Enforcement
 
-Wave 1 task [6/8] adds per-key metering and configurable quota enforcement for `/g` requests.
+Per-key metering and configurable quota enforcement apply to agent image renders that resolve a valid profile key.
 
 ## What is tracked
 
@@ -23,17 +23,22 @@ Configurable limits:
 - `OSIG_DAILY_USAGE_LIMIT` (default `1000`)
 - `OSIG_MONTHLY_USAGE_LIMIT` (default `10000`)
 
-## Response headers
+## API response metadata
 
-When a keyed request is accepted:
+When a keyed Studio request is accepted, quota state is returned in the JSON payload:
 
-- `X-OSIG-Daily-Usage: <count>/<limit>`
-- `X-OSIG-Monthly-Usage: <count>/<limit>`
-- `X-OSIG-Quota-Warning: daily|monthly` (only when crossing warning threshold for the first time in the period)
+- `daily_count`
+- `daily_limit`
+- `monthly_count`
+- `monthly_limit`
+- `warnings`
+- `blocked`
 
-## Backward compatibility
+MCP tool responses include the same quota metadata when a render is accepted.
 
-Existing no-key `/g` flows are unchanged and not quota-enforced.
+## Trial behavior
+
+No-key trial renders remain watermarked and do not resolve paid watermark state.
 
 ## Admin visibility
 

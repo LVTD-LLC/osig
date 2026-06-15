@@ -1,19 +1,15 @@
 # OSIG
 
-OSIG renders Open Graph and Twitter/X preview images from URL parameters.
+OSIG renders deterministic Open Graph and Twitter/X preview images from structured image specs.
 
-It has two separate usage paths:
+It has two primary usage paths:
 
-- Human website usage: see [docs/human-usage.md](docs/human-usage.md)
 - AI agent usage through MCP: see [docs/agent-mcp.md](docs/agent-mcp.md)
+- Human preview/export usage through the Agent Image Studio on the home page.
 
-The public image endpoint remains:
+The legacy `/g` URL generator has been removed. Agents should render previews and export image bytes through MCP or the Studio API instead of publishing query-string image URLs.
 
-```text
-https://osig.app/g
-```
-
-Existing unsigned `/g` image URLs keep working for backwards compatibility.
+Hosted production usage should be paid and bounded; the open source app remains self-hostable.
 
 ## Development
 
@@ -43,7 +39,7 @@ make test
 
 Production builds one image from `deployment/Dockerfile`. The process is selected with `APP_PROCESS_TYPE`:
 
-- `server`: Django ASGI app. Serves the website, `/g`, API routes, and the mounted FastMCP app at `/mcp`.
+- `server`: Django ASGI app. Serves the website, Studio API routes, admin API routes, and the mounted FastMCP app at `/mcp`.
 - `worker`: Django Q workers.
 - `mcp`: optional standalone FastMCP Streamable HTTP sidecar from `mcp_http_server.py`.
 
@@ -69,13 +65,13 @@ Set `MCP_HOST`, `MCP_PORT`, or `MCP_PATH` to override that.
 
 ## MCP Trial Auth
 
-MCP is intentionally unauthenticated for now so it is easy to try from Codex and other agent clients.
+MCP is intentionally narrow while it is easy to try from Codex and other agent clients.
 
-Do not expose private/admin MCP tools while this remains public. User-scoped history tools still require an explicit OSIG profile key as a tool argument.
+Do not expose private/admin MCP tools while this remains public. Profile keys may be passed by `X-API-Key` or bearer auth for quota and paid watermark state.
 
 ## Roadmap
 
 - Add more image styles.
 - Add more fonts.
 - Add more social/site presets.
-- Reintroduce MCP auth once the agent workflow is proven.
+- Reintroduce mandatory MCP auth before paid hosted production access.

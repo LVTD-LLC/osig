@@ -2,9 +2,10 @@
 
 ## Directory Map
 
-- `core/`: main Django app for product logic, API endpoints, rendering, MCP, usage, billing hooks, and tests.
+- `agent_images/`: agent-first image app with FastMCP tools, Studio render API, image specs, and shared render services.
+- `core/`: Django app for accounts, billing hooks, blog/content, shared models, renderer internals, usage, observability, and tests.
 - `core/api/`: Django Ninja API schemas, views, and auth helpers.
-- `core/tests/`: pytest coverage for renderer behavior, MCP, auth, onboarding, quotas, views, reliability, and integrations.
+- `core/tests/`: pytest coverage for renderer behavior, MCP, auth, quotas, views, reliability, Studio API, and removed legacy endpoints.
 - `frontend/src/`: JavaScript controllers and CSS entrypoint.
 - `frontend/templates/`: Django templates for pages, account flows, components, blog, and base layout.
 - `frontend/vendors/images/`: static product/logo/example images.
@@ -18,27 +19,29 @@
 
 ## Important Files
 
-- `core/mcp.py`: MCP contract and tool implementation.
+- `agent_images/mcp.py`: MCP contract and tool implementation.
+- `agent_images/services.py`: image spec validation, normalization, rendering, metadata, quota, and retry/observability.
+- `agent_images/views.py`: Studio render API.
+- `core/mcp.py`: compatibility import for the new MCP module.
 - `core/mcp_auth.py`: profile-key MCP auth helpers; not currently mounted on the public trial MCP surface.
 - `core/image_styles.py`: image style router and template renderers.
 - `core/image_utils.py`: dimensions, font loading, image fetching, output encoding, watermark helper.
-- `core/views.py`: public pages and `/g` renderer endpoint.
-- `core/api/views.py`: signed URL, onboarding metadata, WordPress helper, blog submission, render metrics.
+- `core/views.py`: public pages, account settings, billing redirects, and utility image views.
+- `core/api/views.py`: blog submission and render metrics.
 - `core/models.py`: profiles, usage, generated images, render attempts, blog posts.
 - `core/usage.py`: per-profile usage metering and quota enforcement.
 - `core/render_observability.py`: render error taxonomy, retry classification, aggregate metrics.
-- `core/signing.py`: signed public URL creation and verification.
-- `frontend/src/controllers/image_generator_controller.js`: current human web generator.
-- `frontend/src/controllers/onboarding_wizard_controller.js`: guided human metadata workflow.
+- `core/signing.py`: legacy signing helpers retained for now, not used by the current agent-first flow.
+- `frontend/src/controllers/agent_studio_controller.js`: Studio render/export interactions.
 - `frontend/src/styles/index.css`: product UI tokens and component classes.
 - `deployment/entrypoint.sh`: production server/worker role selection.
 
 ## Ownership Boundaries
 
-- MCP changes belong in `core/mcp.py` unless they require shared auth/render/signing behavior.
+- MCP changes belong in `agent_images/mcp.py` unless they require shared render/auth behavior.
 - Public JSON API changes belong in `core/api/`.
 - Render template changes belong in `core/image_styles.py`; shared image mechanics belong in `core/image_utils.py`.
-- `/g` request parsing and response/cache behavior belong in `core/views.py`.
+- Studio render API behavior belongs in `agent_images/views.py`; shared image behavior belongs in `agent_images/services.py`.
 - New persisted state belongs in `core/models.py` with migrations and admin/test updates.
 - Human UI changes should use Django templates, Stimulus controllers, and CSS tokens already present in `frontend/src/styles/index.css`.
 - Product direction belongs in root steering files, not scattered only through feature docs.
@@ -46,7 +49,7 @@
 ## Placement Rules
 
 - Add new tests beside related existing tests under `core/tests/`.
-- Add new image styles to the router, MCP contract, README/docs, and test coverage in one change.
+- Add new image styles to the router, `agent_images` contract, README/docs, and test coverage in one change.
 - Add new public API request/response shapes to `core/api/schemas.py`.
 - Add new API endpoints to `core/api/views.py` and route through the existing Ninja API.
 - Add new CSS component primitives in `frontend/src/styles/index.css` only when repeated across pages.
@@ -65,8 +68,9 @@
 
 When touching renderer, MCP, API, billing, or quota behavior, check these paths together:
 
-- `core/mcp.py`
-- `core/views.py`
+- `agent_images/mcp.py`
+- `agent_images/services.py`
+- `agent_images/views.py`
 - `core/api/views.py`
 - `core/image_styles.py`
 - `core/image_utils.py`
@@ -78,4 +82,4 @@ When touching renderer, MCP, API, billing, or quota behavior, check these paths 
 
 ## Current Product Surfaces
 
-The web generator and onboarding wizard are useful, but they are not the long-term center of the product. Future structure should make it easy for agents to call MCP/API flows directly while humans use the web app for configuration, billing, docs, and diagnostics.
+The Agent Image Studio is the human playground for the same services agents use. Future structure should keep MCP/API flows primary while humans use the web app for configuration, billing, docs, previews, and diagnostics.

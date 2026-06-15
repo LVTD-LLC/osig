@@ -9,10 +9,10 @@ The generated images are also part of the product design. They should look polis
 ## Interface Priority
 
 - Lead with the agent/MCP/API workflow over a human hand-tuned generator.
-- Use the web UI for setup, API keys, docs, playground previews, usage, billing, and render health.
-- Keep the generator and onboarding wizard as useful playgrounds, not as the only way to understand the product.
+- Use the web UI for setup, API keys, docs, Studio previews, usage, billing, and render health.
+- Keep the Agent Image Studio as a playground for the same structured specs MCP tools consume.
 - Prefer tables, code blocks, parameter inspectors, previews, and status panels over marketing sections.
-- Make paid/free state, watermark behavior, quota, and signed URL expiry visible.
+- Make paid/free state, watermark behavior, quota, and export metadata visible.
 
 ## Visual Theme
 
@@ -70,7 +70,7 @@ Add new component classes only when the pattern repeats across pages. For one-of
 
 ## Interaction
 
-Motion is limited to short state transitions on navigation, buttons, dropdowns, wizard progress, generator status, and toasts. Reduced motion users receive instant or near-instant transitions.
+Motion is limited to short state transitions on navigation, buttons, dropdowns, Studio status, and toasts. Reduced motion users receive instant or near-instant transitions.
 
 Preview, quota, billing, validation, and wizard states should always communicate what is happening in text, not color alone. Errors should name the failing input or system boundary.
 

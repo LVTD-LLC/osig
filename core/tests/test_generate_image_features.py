@@ -1,22 +1,13 @@
+import base64
 import io
 import json
-from datetime import timedelta
-from types import SimpleNamespace
-from urllib.parse import parse_qs, urlparse
 
 import pytest
-from django.utils import timezone
+from django.contrib.auth.models import User
 from PIL import Image
 
+from agent_images.services import ImageSpec, normalize_image_spec, render_image
 from core.image_styles import _safe_truncate, generate_job_clean_image
-from core.signing import build_signed_params
-
-
-@pytest.fixture
-def disable_async_tasks(monkeypatch):
-    import core.views as core_views
-
-    monkeypatch.setattr(core_views, "async_task", lambda *args, **kwargs: None)
 
 
 def _tiny_png_buffer():
@@ -27,235 +18,135 @@ def _tiny_png_buffer():
 
 
 @pytest.mark.django_db
-class TestSignedUrls:
-    def test_sign_endpoint_returns_signed_og_url(self, client):
-        payload = {
-            "params": {
-                "style": "base",
-                "site": "x",
-                "title": "Signed title",
-                "subtitle": "Signed subtitle",
-            },
-            "expires_in_seconds": 300,
-        }
+def test_legacy_g_endpoint_is_removed(client):
+    response = client.get("/g", data={"style": "base", "title": "Removed"})
 
-        response = client.post("/api/sign", data=json.dumps(payload), content_type="application/json")
-
-        assert response.status_code == 200
-        data = response.json()
-
-        signed_url = data["signed_url"]
-        parsed = urlparse(signed_url)
-        parsed_query = parse_qs(parsed.query)
-
-        assert parsed.path == "/g"
-        assert parsed_query["title"] == ["Signed title"]
-        assert "sig" in parsed_query
-        assert "exp" in parsed_query
-
-    def test_generate_image_accepts_valid_signature(self, client, disable_async_tasks, monkeypatch):
-        import core.views as core_views
-
-        monkeypatch.setattr(core_views, "generate_image_router", lambda params: _tiny_png_buffer())
-
-        signed_params, _ = build_signed_params(
-            {
-                "style": "base",
-                "site": "x",
-                "title": "Valid Signature",
-                "subtitle": "Works",
-            },
-            expires_in_seconds=300,
-        )
-
-        response = client.get("/g", data=signed_params)
-
-        assert response.status_code == 200
-        assert response["Content-Type"] == "image/png"
-        assert "max-age=" in response["Cache-Control"]
-        assert "immutable" not in response["Cache-Control"]
-
-    def test_generate_image_rejects_tampered_signature(self, client, disable_async_tasks, monkeypatch):
-        import core.views as core_views
-
-        monkeypatch.setattr(core_views, "generate_image_router", lambda params: _tiny_png_buffer())
-
-        signed_params, _ = build_signed_params(
-            {
-                "style": "base",
-                "site": "x",
-                "title": "Original Title",
-            },
-            expires_in_seconds=300,
-        )
-        signed_params["title"] = "Tampered Title"
-
-        response = client.get("/g", data=signed_params)
-
-        assert response.status_code == 403
-
-    def test_generate_image_rejects_expired_signature(self, client, disable_async_tasks, monkeypatch):
-        import core.views as core_views
-
-        monkeypatch.setattr(core_views, "generate_image_router", lambda params: _tiny_png_buffer())
-
-        signed_params, _ = build_signed_params(
-            {
-                "style": "base",
-                "site": "x",
-                "title": "Expired Signature",
-            },
-            expires_in_seconds=60,
-            now=timezone.now() - timedelta(hours=2),
-        )
-
-        response = client.get("/g", data=signed_params)
-
-        assert response.status_code == 403
+    assert response.status_code == 404
 
 
 @pytest.mark.django_db
-class TestOutputFormatAndCompression:
-    def test_generate_image_supports_png_and_jpeg_content_types(self, client, disable_async_tasks):
-        common_params = {
-            "style": "base",
-            "site": "x",
-            "title": "Format Test",
-            "subtitle": "Content types",
-        }
+def test_studio_render_api_returns_image_payload(client, monkeypatch):
+    import agent_images.services as agent_services
 
-        png_response = client.get("/g", data={**common_params, "format": "png"})
-        jpeg_response = client.get("/g", data={**common_params, "format": "jpeg", "quality": "70"})
+    monkeypatch.setattr(agent_services, "generate_image_router", lambda params: _tiny_png_buffer())
 
-        assert png_response.status_code == 200
-        assert png_response["Content-Type"] == "image/png"
+    response = client.post(
+        "/api/studio/render",
+        data=json.dumps(
+            {
+                "spec": {
+                    "style": "base",
+                    "site": "x",
+                    "title": "Studio render",
+                }
+            }
+        ),
+        content_type="application/json",
+    )
 
-        assert jpeg_response.status_code == 200
-        assert jpeg_response["Content-Type"] == "image/jpeg"
-        assert jpeg_response.content.startswith(b"\xff\xd8")
+    assert response.status_code == 200
+    payload = response.json()
+    decoded = base64.b64decode(payload["image_base64"])
 
-    def test_jpeg_quality_output_is_deterministic(self, client, disable_async_tasks):
-        params = {
-            "style": "base",
-            "site": "x",
-            "title": "Deterministic",
-            "subtitle": "JPEG quality",
-            "format": "jpeg",
-            "quality": "62",
-        }
-
-        first = client.get("/g", data=params)
-        second = client.get("/g", data=params)
-        lower_quality = client.get("/g", data={**params, "quality": "20"})
-
-        assert first.status_code == 200
-        assert second.status_code == 200
-        assert first.content == second.content
-        assert first.content != lower_quality.content
+    assert payload["content_type"] == "image/png"
+    assert payload["data_uri"].startswith("data:image/png;base64,")
+    assert decoded.startswith(b"\x89PNG")
 
 
 @pytest.mark.django_db
-class TestJobBoardTemplatePack:
-    @pytest.mark.parametrize("style", ["job_classic", "job_logo", "job_clean"])
-    def test_generate_image_supports_job_board_styles(self, client, disable_async_tasks, style):
-        response = client.get(
-            "/g",
-            data={
-                "style": style,
-                "site": "x",
-                "title": "Senior Django Engineer",
-                "subtitle": "Ship production systems for real users",
-                "eyebrow": "Remote",
-            },
-        )
+def test_studio_render_api_rejects_invalid_specs(client):
+    response = client.post(
+        "/api/studio/render",
+        data=json.dumps({"spec": {"style": "unknown", "title": "Invalid"}}),
+        content_type="application/json",
+    )
 
-        assert response.status_code == 200
-        assert response["Content-Type"] == "image/png"
-
-    def test_image_or_logo_alias_is_used_when_image_url_is_missing(self, client, disable_async_tasks, monkeypatch):
-        import core.views as core_views
-
-        captured_params = {}
-
-        def fake_router(params):
-            captured_params.update(params)
-            return _tiny_png_buffer()
-
-        monkeypatch.setattr(core_views, "generate_image_router", fake_router)
-
-        response = client.get(
-            "/g",
-            data={
-                "style": "job_logo",
-                "title": "Founding Designer",
-                "subtitle": "Craft our product experience",
-                "image_or_logo": "https://example.com/logo.png",
-            },
-        )
-
-        assert response.status_code == 200
-        assert captured_params["image_url"] == "https://example.com/logo.png"
-
-    def test_safe_truncation_limits_copy_length(self):
-        long_text = "A" * 500
-        truncated = _safe_truncate(long_text, 64)
-
-        assert len(truncated) <= 64
-        assert truncated.endswith("...")
-
-    def test_job_clean_template_handles_long_copy_without_errors(self):
-        image = generate_job_clean_image(
-            profile_id=None,
-            site="x",
-            font="helvetica",
-            title="Senior Python Engineer " * 30,
-            subtitle="Build reliable systems and own customer outcomes. " * 40,
-            eyebrow="Hiring now " * 20,
-            image_url=None,
-        )
-
-        assert image.getbuffer().nbytes > 0
+    assert response.status_code == 400
+    assert response.json()["error"] == "invalid_spec"
 
 
 @pytest.mark.django_db
-class TestCacheAndVersioning:
-    def test_v_query_param_changes_cache_key_lookup(self, client, disable_async_tasks, monkeypatch):
-        import core.views as core_views
+class TestAgentImageService:
+    def test_normalize_image_spec_maps_logo_alias(self):
+        user = User.objects.create_user(username="normalizer", email="normalizer@example.com", password="pass123")
 
-        requested_image_data = []
-
-        def fake_filter(*args, **kwargs):
-            image_data = kwargs["image_data"]
-            requested_image_data.append(dict(image_data))
-
-            version = image_data.get("v")
-            payload = b"image-v1" if version == "1" else b"image-v2"
-            cached_object = SimpleNamespace(
-                id=1,
-                generated_image=payload,
-                updated_at=timezone.now(),
+        normalized = normalize_image_spec(
+            ImageSpec(
+                key=user.profile.key,
+                style="job_logo",
+                title="Senior Django Engineer",
+                image_or_logo="https://example.com/logo.png",
             )
-            return SimpleNamespace(first=lambda: cached_object)
+        )
 
-        monkeypatch.setattr(core_views.ImageModel.objects, "filter", fake_filter)
+        assert normalized.spec["image_url"] == "https://example.com/logo.png"
+        assert normalized.spec["key"] == user.profile.key
+        assert normalized.safe_render_params["image_url"] == "https://example.com/logo.png"
+        assert "profile_id" not in normalized.safe_render_params
 
-        response_v1 = client.get("/g", data={"style": "base", "title": "Cache", "v": "1"})
-        response_v2 = client.get("/g", data={"style": "base", "title": "Cache", "v": "2"})
+    def test_render_image_supports_png_and_jpeg_content_types(self):
+        png_payload = render_image(
+            ImageSpec(style="base", site="x", title="Format Test", subtitle="Content types", format="png")
+        )
+        jpeg_payload = render_image(
+            ImageSpec(style="base", site="x", title="Format Test", subtitle="Content types", format="jpeg", quality=70)
+        )
 
-        assert response_v1.status_code == 200
-        assert response_v2.status_code == 200
-        assert response_v1.content == b"image-v1"
-        assert response_v2.content == b"image-v2"
+        assert png_payload["content_type"] == "image/png"
+        assert base64.b64decode(png_payload["image_base64"]).startswith(b"\x89PNG")
+        assert jpeg_payload["content_type"] == "image/jpeg"
+        assert base64.b64decode(jpeg_payload["image_base64"]).startswith(b"\xff\xd8")
 
-        assert requested_image_data[0]["v"] == "1"
-        assert requested_image_data[1]["v"] == "2"
+    def test_jpeg_quality_output_is_deterministic(self):
+        spec = ImageSpec(
+            style="base",
+            site="x",
+            title="Deterministic",
+            subtitle="JPEG quality",
+            format="jpeg",
+            quality=62,
+        )
 
-    def test_generate_image_sets_explicit_cache_headers(self, client, disable_async_tasks, monkeypatch):
-        import core.views as core_views
+        first = render_image(spec)
+        second = render_image(spec)
+        lower_quality = render_image(spec.model_copy(update={"quality": 20}))
 
-        monkeypatch.setattr(core_views, "generate_image_router", lambda params: _tiny_png_buffer())
+        assert first["image_base64"] == second["image_base64"]
+        assert first["image_base64"] != lower_quality["image_base64"]
 
-        response = client.get("/g", data={"style": "base", "title": "Cache headers"})
+    @pytest.mark.parametrize("style", ["job_classic", "job_logo", "job_clean"])
+    def test_render_image_supports_job_board_styles(self, style):
+        payload = render_image(
+            ImageSpec(
+                style=style,
+                site="x",
+                title="Senior Django Engineer",
+                subtitle="Ship production systems for real users",
+                eyebrow="Remote",
+            )
+        )
 
-        assert response.status_code == 200
-        assert response["Cache-Control"] == "public, max-age=31536000, immutable"
+        assert payload["content_type"] == "image/png"
+        assert payload["byte_size"] > 0
+
+
+def test_safe_truncation_limits_copy_length():
+    long_text = "A" * 500
+    truncated = _safe_truncate(long_text, 64)
+
+    assert len(truncated) <= 64
+    assert truncated.endswith("...")
+
+
+def test_job_clean_template_handles_long_copy_without_errors():
+    image = generate_job_clean_image(
+        profile_id=None,
+        site="x",
+        font="helvetica",
+        title="Senior Python Engineer " * 30,
+        subtitle="Build reliable systems and own customer outcomes. " * 40,
+        eyebrow="Hiring now " * 20,
+        image_url=None,
+    )
+
+    assert image.getbuffer().nbytes > 0

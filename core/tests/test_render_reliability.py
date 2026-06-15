@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from django.test import override_settings
 from PIL import Image
 
+from agent_images.services import ImageRenderFailed, ImageSpec, render_image
 from core.models import RenderAttempt
 from core.render_observability import RenderErrorType
 
@@ -20,7 +21,7 @@ def _tiny_png_buffer():
 @pytest.mark.django_db
 @override_settings(OSIG_RENDER_MAX_ATTEMPTS=2)
 def test_retries_transient_render_failures(client, monkeypatch):
-    import core.views as core_views
+    import agent_images.services as agent_services
 
     call_count = {"value": 0}
 
@@ -30,12 +31,11 @@ def test_retries_transient_render_failures(client, monkeypatch):
             raise requests.exceptions.Timeout("network timeout")
         return _tiny_png_buffer()
 
-    monkeypatch.setattr(core_views, "async_task", lambda *args, **kwargs: None)
-    monkeypatch.setattr(core_views, "generate_image_router", flaky_router)
+    monkeypatch.setattr(agent_services, "generate_image_router", flaky_router)
 
-    response = client.get("/g", data={"style": "base", "title": "Retry test"})
+    payload = render_image(ImageSpec(style="base", title="Retry test"))
 
-    assert response.status_code == 200
+    assert payload["content_type"] == "image/png"
     assert call_count["value"] == 2
 
     attempts = list(RenderAttempt.objects.order_by("created_at"))
@@ -48,7 +48,7 @@ def test_retries_transient_render_failures(client, monkeypatch):
 @pytest.mark.django_db
 @override_settings(OSIG_RENDER_MAX_ATTEMPTS=3)
 def test_does_not_retry_non_transient_errors(client, monkeypatch):
-    import core.views as core_views
+    import agent_images.services as agent_services
 
     call_count = {"value": 0}
 
@@ -56,13 +56,12 @@ def test_does_not_retry_non_transient_errors(client, monkeypatch):
         call_count["value"] += 1
         raise ValueError("invalid payload")
 
-    monkeypatch.setattr(core_views, "async_task", lambda *args, **kwargs: None)
-    monkeypatch.setattr(core_views, "generate_image_router", invalid_router)
+    monkeypatch.setattr(agent_services, "generate_image_router", invalid_router)
 
-    response = client.get("/g", data={"style": "base", "title": "Validation failure"})
+    with pytest.raises(ImageRenderFailed) as exc_info:
+        render_image(ImageSpec(style="base", title="Validation failure"))
 
-    assert response.status_code == 502
-    assert "validation_error" in response.content.decode("utf-8")
+    assert exc_info.value.error_type == RenderErrorType.VALIDATION_ERROR
     assert call_count["value"] == 1
 
     attempts = list(RenderAttempt.objects.all())

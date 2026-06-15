@@ -25,7 +25,8 @@ class TestHomeView:
 @pytest.mark.django_db
 class TestSeoSurface:
     def test_robots_txt_points_to_sitemap_and_blocks_utility_paths(self, client):
-        response = client.get(reverse("robots_txt"), HTTP_HOST="osig.app")
+        with override_settings(ALLOWED_HOSTS=["osig.app"]):
+            response = client.get(reverse("robots_txt"), HTTP_HOST="osig.app")
 
         assert response.status_code == 200
         assert response["Content-Type"].startswith("text/plain")
@@ -83,17 +84,16 @@ class TestSeoSurface:
             assert '<link rel="canonical" href="https://testserver' in body
             assert '<script type="application/ld+json">' in body
 
-    def test_how_to_page_keeps_human_usage_separate_from_mcp(self, client):
+    def test_how_to_page_documents_mcp_not_legacy_g(self, client):
         response = client.get(reverse("how_to"))
 
         assert response.status_code == 200
         body = response.content.decode()
-        assert "Endpoint" in body
-        assert "https://osig.app/g" in body
-        assert "Using the MCP" not in body
-        assert "https://osig.app/mcp/" not in body
-        assert "X-API-Key" not in body
-        assert "get_image_generation_contract" not in body
+        assert "MCP docs" in body
+        assert "https://osig.app/mcp/" in body
+        assert "get_image_contract" in body
+        assert "export_image" in body
+        assert "https://osig.app/g" not in body
 
     def test_site_url_uses_request_scheme_for_local_preview(self):
         request = RequestFactory().get("/how-to", HTTP_HOST="localhost:8000")
@@ -135,7 +135,8 @@ class TestSeoSurface:
             status=BlogPostStatus.DRAFT,
         )
 
-        response = client.get(reverse("django.contrib.sitemaps.views.sitemap"), HTTP_HOST="osig.app")
+        with override_settings(ALLOWED_HOSTS=["osig.app"]):
+            response = client.get(reverse("django.contrib.sitemaps.views.sitemap"), HTTP_HOST="osig.app")
 
         assert response.status_code == 200
         body = response.content.decode()

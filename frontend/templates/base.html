@@ -15,24 +15,24 @@
   {% block meta %}
   {% site_url "/" as home_url %}
   {% absolute_static "vendors/images/logo-square.png" as logo_square_url %}
-  {% og_image_url "Open Graph Image Generator for Social Previews" "Create dynamic Open Graph and Twitter card images for any page with a simple URL-based generator." image_url=logo_square_url as default_og_image %}
-  <title>Open Graph Image Generator for Social Previews | OSIG</title>
-  <meta name="description" content="Create dynamic Open Graph and Twitter card images for any page with OSIG, a free URL-based social preview image generator." />
+  {% og_image_url "OSIG Agent Image Infrastructure" "Generate deterministic social preview images through MCP and structured image specs." image_url=logo_square_url as default_og_image %}
+  <title>OSIG | Agent Image Infrastructure</title>
+  <meta name="description" content="Generate deterministic Open Graph and social preview images through MCP, structured specs, and code-rendered templates." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="{{ home_url }}" />
 
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Open Graph Image Generator for Social Previews | OSIG" />
+  <meta property="og:title" content="OSIG | Agent Image Infrastructure" />
   <meta property="og:url" content="{{ home_url }}" />
-  <meta property="og:description" content="Create dynamic Open Graph and Twitter card images for any page with OSIG, a free URL-based social preview image generator." />
+  <meta property="og:description" content="Generate deterministic Open Graph and social preview images through MCP, structured specs, and code-rendered templates." />
   <meta property="og:image" content="{{ default_og_image }}" />
   <meta property="og:locale" content="en_US" />
 
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:creator" content="@rasulkireev" />
   <meta name="twitter:site" content="@rasulkireev" />
-  <meta name="twitter:title" content="Open Graph Image Generator for Social Previews | OSIG" />
-  <meta name="twitter:description" content="Create dynamic Open Graph and Twitter card images for any page with OSIG, a free URL-based social preview image generator." />
+  <meta name="twitter:title" content="OSIG | Agent Image Infrastructure" />
+  <meta name="twitter:description" content="Generate deterministic Open Graph and social preview images through MCP, structured specs, and code-rendered templates." />
   <meta name="twitter:image" content="{{ default_og_image }}" />
   {% endblock meta %}
 
@@ -65,9 +65,8 @@
         </a>
 
         <div class="hidden items-center gap-7 lg:flex">
-          <a href="{% url 'home' %}#generator" class="nav-link">Generator</a>
-          <a href="{% url 'how_to' %}" class="nav-link">Docs</a>
-          <a href="{% url 'onboarding_wizard' %}" class="nav-link">Wizard</a>
+          <a href="{% url 'home' %}#studio" class="nav-link">Studio</a>
+          <a href="{% url 'how_to' %}" class="nav-link">MCP docs</a>
           <a href="{% url 'blog_posts' %}" class="nav-link">Guides</a>
           <a href="{% url 'pricing' %}" class="nav-link">Pricing</a>
         </div>
@@ -104,7 +103,7 @@
           </div>
           {% else %}
           <a href="{% url 'account_login' %}" class="btn-secondary">Log in</a>
-          <a href="{% url 'account_signup' %}" class="btn-primary">Create image URLs</a>
+          <a href="{% url 'account_signup' %}" class="btn-primary">Create account</a>
           {% endif %}
         </div>
 
@@ -138,9 +137,8 @@
                   </button>
                 </div>
                 <div class="mt-8 grid gap-2">
-                  <a href="{% url 'home' %}#generator" class="nav-link rounded-md px-3 py-3 hover:bg-[var(--osig-surface-soft)]">Generator</a>
-                  <a href="{% url 'how_to' %}" class="nav-link rounded-md px-3 py-3 hover:bg-[var(--osig-surface-soft)]">Docs</a>
-                  <a href="{% url 'onboarding_wizard' %}" class="nav-link rounded-md px-3 py-3 hover:bg-[var(--osig-surface-soft)]">Wizard</a>
+                  <a href="{% url 'home' %}#studio" class="nav-link rounded-md px-3 py-3 hover:bg-[var(--osig-surface-soft)]">Studio</a>
+                  <a href="{% url 'how_to' %}" class="nav-link rounded-md px-3 py-3 hover:bg-[var(--osig-surface-soft)]">MCP docs</a>
                   <a href="{% url 'blog_posts' %}" class="nav-link rounded-md px-3 py-3 hover:bg-[var(--osig-surface-soft)]">Guides</a>
                   <a href="{% url 'pricing' %}" class="nav-link rounded-md px-3 py-3 hover:bg-[var(--osig-surface-soft)]">Pricing</a>
                   {% if user.is_authenticated %}
@@ -149,7 +147,7 @@
                     <button class="btn-secondary w-full" data-action="dropdown#toggle" type="submit">Sign out</button>
                   </form>
                   {% else %}
-                  <a href="{% url 'account_signup' %}" class="btn-primary mt-4 w-full">Create image URLs</a>
+                  <a href="{% url 'account_signup' %}" class="btn-primary mt-4 w-full">Create account</a>
                   {% endif %}
                 </div>
               </div>
@@ -172,12 +170,11 @@
             <span>OSIG</span>
           </a>
           <p class="mt-3 max-w-lg text-sm leading-6 text-[var(--osig-muted)]">
-            Generate social preview images from URLs, signed API calls, and copy-ready metadata.
+            Deterministic image infrastructure for agents that need Open Graph and social preview assets.
           </p>
         </div>
         <div class="flex flex-wrap gap-x-5 gap-y-2 text-sm">
           <a href="{% url 'how_to' %}" class="nav-link">Docs</a>
-          <a href="{% url 'onboarding_wizard' %}" class="nav-link">Wizard</a>
           <a href="{% url 'uses' %}" class="nav-link">Uses</a>
           <a href="https://statushen.com/osig/" class="nav-link">Status</a>
           <a href="https://github.com/rasulkireev/osig" class="nav-link">GitHub</a>
@@ -194,16 +191,16 @@
   {% site_url "/" as home_url %}
   {% absolute_static "vendors/images/logo.png" as logo_url %}
   {% absolute_static "vendors/images/logo-square.png" as logo_square_url %}
-  {% og_image_url "Open Graph Image Generator for Social Previews" "Create dynamic Open Graph and Twitter card images for any page with a simple URL-based generator." image_url=logo_square_url as default_og_image %}
+  {% og_image_url "OSIG Agent Image Infrastructure" "Generate deterministic social preview images through MCP and structured image specs." image_url=logo_square_url as default_og_image %}
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebApplication",
       "name": "OSIG",
       "alternateName": "Open Source Image Generator",
-      "applicationCategory": "DesignApplication",
+      "applicationCategory": "DeveloperApplication",
       "operatingSystem": "Web",
-      "description": "Create dynamic Open Graph and Twitter card images for any page with OSIG, a free URL-based social preview image generator.",
+      "description": "Generate deterministic Open Graph and social preview images through MCP, structured specs, and code-rendered templates.",
       "url": "{{ home_url }}",
       "image": "{{ default_og_image|safe }}",
       "thumbnailUrl": "{{ logo_url }}",

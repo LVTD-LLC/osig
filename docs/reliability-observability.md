@@ -16,7 +16,7 @@ Render failures are now classified into explicit categories:
 
 ## Retry policy
 
-`/g` render pipeline now retries transient failures.
+The shared `agent_images.services.render_image` pipeline retries transient failures.
 
 Config:
 
@@ -27,7 +27,7 @@ Behavior:
 
 - retries only transient categories (`transient_upstream_fetch`, `upstream_fetch_5xx`)
 - non-transient errors fail fast
-- final failure returns `502` with classified error type
+- final Studio API failure returns `502` with the classified error type; MCP calls surface the same render failure through the tool error path
 
 ## Observability model
 

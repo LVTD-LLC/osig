@@ -19,7 +19,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "osig.settings")
 
 django_application = get_asgi_application()
 
-from core.mcp import mcp  # noqa: E402
+from agent_images.mcp import mcp  # noqa: E402
 
 mcp_application = mcp.http_app(path="/")
 
