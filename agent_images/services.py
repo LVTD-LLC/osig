@@ -337,7 +337,5 @@ def render_image(
                     continue
 
                 raise ImageRenderFailed(error_type) from exc
-
-        raise ImageRenderFailed("unknown_error")
     finally:
         close_old_connections()

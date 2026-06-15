@@ -66,6 +66,25 @@ def test_studio_render_api_rejects_invalid_specs(client):
 
 
 @pytest.mark.django_db
+def test_studio_render_api_handles_authenticated_user_without_profile(client, monkeypatch):
+    import agent_images.services as agent_services
+
+    monkeypatch.setattr(agent_services, "generate_image_router", lambda params: _tiny_png_buffer())
+    user = User.objects.create_user(username="missing-profile", email="missing-profile@example.com", password="pass123")
+    user.profile.delete()
+    client.force_login(user)
+
+    response = client.post(
+        "/api/studio/render",
+        data=json.dumps({"spec": {"style": "base", "site": "x", "title": "Missing profile"}}),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["content_type"] == "image/png"
+
+
+@pytest.mark.django_db
 class TestAgentImageService:
     def test_normalize_image_spec_maps_logo_alias(self):
         user = User.objects.create_user(username="normalizer", email="normalizer@example.com", password="pass123")

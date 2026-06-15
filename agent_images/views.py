@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from json import JSONDecodeError
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_POST
 from pydantic import ValidationError
@@ -13,7 +14,10 @@ from .services import ImageRenderFailed, ImageSpec, ImageUsageLimitExceeded, ren
 def _profile_for_request(request: HttpRequest):
     if not request.user.is_authenticated:
         return None
-    return request.user.profile
+    try:
+        return request.user.profile
+    except ObjectDoesNotExist:
+        return None
 
 
 @require_POST
@@ -24,7 +28,7 @@ def render_studio_image(request: HttpRequest) -> JsonResponse:
         return JsonResponse({"error": "invalid_json", "message": "Request body must be valid JSON."}, status=400)
 
     try:
-        spec = ImageSpec.model_validate(payload.get("spec", payload))
+        spec = ImageSpec.model_validate(payload.get("spec") or payload)
         result = render_image(spec, profile=_profile_for_request(request), include_image_base64=True)
         return JsonResponse(result)
     except ValidationError as exc:
