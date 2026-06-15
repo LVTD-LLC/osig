@@ -110,6 +110,18 @@ class ImageRenderFailed(Exception):
         super().__init__(f"Render failed: {error_type}")
 
 
+def _record_render_attempt_safely(**kwargs):
+    try:
+        record_render_attempt(**kwargs)
+    except Exception as exc:
+        logger.warning(
+            "Failed to record agent image render attempt",
+            success=kwargs.get("success"),
+            attempt_number=kwargs.get("attempt_number"),
+            error=str(exc),
+        )
+
+
 def _content_type_for_format(output_format: str) -> str:
     return "image/jpeg" if output_format == "jpeg" else "image/png"
 
@@ -276,15 +288,42 @@ def render_image(
             try:
                 image_buffer = generate_image_router(normalized.render_params)
                 payload = image_buffer.getvalue()
+                render_duration_ms = int((perf_counter() - attempt_started_at) * 1000)
+            except Exception as exc:
                 duration_ms = int((perf_counter() - attempt_started_at) * 1000)
-                metadata = _image_payload_metadata(payload)
+                error_type = classify_render_error(exc)
 
-                record_render_attempt(
+                _record_render_attempt_safely(
+                    profile=normalized.profile,
+                    key=normalized.spec.get("key", ""),
+                    style=normalized.spec.get("style", "base"),
+                    success=False,
+                    duration_ms=duration_ms,
+                    error_type=error_type,
+                    attempt_number=attempt_number,
+                )
+
+                should_retry = is_transient_error(error_type) and attempt_number < max_attempts
+                logger.warning(
+                    "Agent image render failed",
+                    error_type=error_type,
+                    attempt_number=attempt_number,
+                    max_attempts=max_attempts,
+                    should_retry=should_retry,
+                    error=str(exc),
+                )
+                if should_retry:
+                    continue
+
+                raise ImageRenderFailed(error_type) from exc
+            else:
+                metadata = _image_payload_metadata(payload)
+                _record_render_attempt_safely(
                     profile=normalized.profile,
                     key=normalized.spec.get("key", ""),
                     style=normalized.spec.get("style", "base"),
                     success=True,
-                    duration_ms=duration_ms,
+                    duration_ms=render_duration_ms,
                     attempt_number=attempt_number,
                 )
 
@@ -310,32 +349,5 @@ def render_image(
                     response["data_uri"] = f"data:{normalized.content_type};base64,{encoded_image}"
 
                 return response
-            except Exception as exc:
-                duration_ms = int((perf_counter() - attempt_started_at) * 1000)
-                error_type = classify_render_error(exc)
-
-                record_render_attempt(
-                    profile=normalized.profile,
-                    key=normalized.spec.get("key", ""),
-                    style=normalized.spec.get("style", "base"),
-                    success=False,
-                    duration_ms=duration_ms,
-                    error_type=error_type,
-                    attempt_number=attempt_number,
-                )
-
-                should_retry = is_transient_error(error_type) and attempt_number < max_attempts
-                logger.warning(
-                    "Agent image render failed",
-                    error_type=error_type,
-                    attempt_number=attempt_number,
-                    max_attempts=max_attempts,
-                    should_retry=should_retry,
-                    error=str(exc),
-                )
-                if should_retry:
-                    continue
-
-                raise ImageRenderFailed(error_type) from exc
     finally:
         close_old_connections()

@@ -70,6 +70,29 @@ def test_does_not_retry_non_transient_errors(client, monkeypatch):
 
 
 @pytest.mark.django_db
+@override_settings(OSIG_RENDER_MAX_ATTEMPTS=2)
+def test_successful_render_does_not_retry_when_observability_recording_fails(client, monkeypatch):
+    import agent_images.services as agent_services
+
+    call_count = {"value": 0}
+
+    def router(params):
+        call_count["value"] += 1
+        return _tiny_png_buffer()
+
+    def failing_record_attempt(**kwargs):
+        raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(agent_services, "generate_image_router", router)
+    monkeypatch.setattr(agent_services, "record_render_attempt", failing_record_attempt)
+
+    payload = render_image(ImageSpec(style="base", title="Successful render"))
+
+    assert payload["content_type"] == "image/png"
+    assert call_count["value"] == 1
+
+
+@pytest.mark.django_db
 def test_render_metrics_dashboard_returns_fail_rate_and_p95(client):
     admin_user = User.objects.create_superuser(username="admin", email="admin@example.com", password="pass123")
     profile = admin_user.profile
