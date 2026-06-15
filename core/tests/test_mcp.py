@@ -58,6 +58,46 @@ def test_get_image_contract_describes_agent_workflow():
 
 
 @pytest.mark.django_db(transaction=True)
+def test_trial_mcp_core_tools_work_without_authentication_or_key(monkeypatch):
+    import agent_images.services as agent_services
+
+    monkeypatch.setattr(agent_services, "generate_image_router", lambda params: _tiny_png_buffer())
+
+    async def run_test():
+        from agent_images.mcp import create_mcp
+
+        async with Client(create_mcp()) as client:
+            contract = await client.call_tool("get_image_contract", {})
+            normalized = await client.call_tool(
+                "normalize_image_spec",
+                {"spec": {"style": "base", "title": "Unauthed trial"}},
+            )
+            preview = await client.call_tool(
+                "render_image_preview",
+                {
+                    "spec": {"style": "base", "title": "Unauthed trial"},
+                    "include_image_base64": False,
+                },
+            )
+            exported = await client.call_tool(
+                "export_image",
+                {"spec": {"style": "base", "title": "Unauthed trial"}},
+            )
+
+        return contract.data, normalized.data, preview.data, exported.data
+
+    contract, normalized, preview, exported = _run(run_test())
+
+    assert contract["access"]["hosted_mcp_url"] == "https://osig.app/mcp/"
+    assert contract["access"]["authentication_required"] is False
+    assert "key" not in normalized["spec"]
+    assert "profile_id" not in normalized["render_params"]
+    assert preview["sha256"]
+    assert preview["content_type"] == "image/png"
+    assert exported["image_base64"]
+
+
+@pytest.mark.django_db(transaction=True)
 def test_normalize_image_spec_maps_logo_alias_to_render_params():
     user = User.objects.create_user(username="normalizer", email="normalizer@example.com", password="pass123")
 

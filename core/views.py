@@ -15,12 +15,25 @@ from django.views.generic import DetailView, ListView, TemplateView, UpdateView
 from djstripe import models as djstripe_models, settings as djstripe_settings
 from PIL import Image
 
-from agent_images.services import FONT_CHOICES, SITE_CHOICES, list_templates
 from core.forms import ProfileUpdateForm
 from core.models import BlogPost, Profile
 from core.utils import check_if_profile_has_pro_subscription
 
 stripe.api_key = djstripe_settings.djstripe_settings.STRIPE_SECRET_KEY
+
+MCP_AGENT_PROMPT = (
+    "Use OSIG to generate deterministic Open Graph and social preview images for this project.\n\n"
+    "MCP server: https://osig.app/mcp/\n"
+    "Authentication: no API key is required for the current hosted trial.\n\n"
+    "Workflow:\n"
+    "1. Call get_image_contract to inspect supported templates, fields, and dimensions.\n"
+    "2. Call normalize_image_spec with structured title, subtitle, eyebrow, image_url, style, site, "
+    "and format values.\n"
+    "3. Call render_image_preview to inspect image metadata and preview bytes. Iterate until the preview "
+    "is ready.\n"
+    "4. Call export_image when the asset is ready to save into a repository or publishing workflow.\n\n"
+    "Use a profile key only if I provide one. Keep generated images deterministic and use preview before export."
+)
 
 
 class HomeView(TemplateView):
@@ -28,27 +41,11 @@ class HomeView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["site_choices"] = [("x", "X 800x450"), ("meta", "Meta 600x315")]
-        context["style_choices"] = [(template["id"], template["name"]) for template in list_templates()]
-        context["font_choices"] = [(font, font.title()) for font in FONT_CHOICES]
-        context["template_cards"] = list_templates()
-        context["default_site"] = SITE_CHOICES[0]
-        context["mcp_http_endpoint"] = self.request.build_absolute_uri("/mcp/")
-        context["mcp_stdio_command"] = "uv run python mcp_server.py"
-
-        if self.request.user.is_authenticated:
-            try:
-                profile = self.request.user.profile
-                context["user_key"] = profile.key
-            except Profile.DoesNotExist:
-                context["user_key"] = None
-        else:
-            context["user_key"] = None
+        context["mcp_agent_prompt"] = MCP_AGENT_PROMPT
 
         payment_status = self.request.GET.get("payment")
         if payment_status == "success":
             messages.success(self.request, "Thanks for subscribing, I hope you enjoy the app!")
-            context["show_confetti"] = True
         elif payment_status == "failed":
             messages.error(self.request, "Something went wrong with the payment.")
 
