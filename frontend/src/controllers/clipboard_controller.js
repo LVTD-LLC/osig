@@ -9,14 +9,26 @@ export default class extends Controller {
     }
   }
 
+  disconnect() {
+    this.clearResetTimer();
+  }
+
   async copy() {
     const text = this.sourceText();
+
+    if (!text) {
+      this.showFailedState();
+      return;
+    }
 
     try {
       await navigator.clipboard.writeText(text);
       this.showCopiedState();
     } catch (error) {
-      this.fallbackCopy();
+      if (!this.fallbackCopy(text)) {
+        console.error("Failed to copy text", error);
+        this.showFailedState();
+      }
     }
   }
 
@@ -28,9 +40,9 @@ export default class extends Controller {
     return (this.sourceTarget.value || this.sourceTarget.textContent || "").trim();
   }
 
-  fallbackCopy() {
-    if (!this.hasSourceTarget) {
-      return;
+  fallbackCopy(text) {
+    if (!this.hasSourceTarget || !text) {
+      return false;
     }
 
     this.sourceTarget.focus();
@@ -41,21 +53,42 @@ export default class extends Controller {
         throw new Error("Copy command was not accepted");
       }
       this.showCopiedState();
+      return true;
     } catch (error) {
       console.error("Failed to copy text", error);
+      return false;
+    } finally {
+      window.getSelection()?.removeAllRanges();
     }
-
-    window.getSelection()?.removeAllRanges();
   }
 
   showCopiedState() {
+    this.showButtonState("Copied");
+  }
+
+  showFailedState() {
+    this.showButtonState("Copy failed");
+  }
+
+  showButtonState(text) {
     if (!this.hasButtonTarget) {
       return;
     }
 
-    this.buttonTarget.textContent = "Copied";
-    window.setTimeout(() => {
-      this.buttonTarget.textContent = this.defaultButtonText || "Copy";
+    this.buttonTarget.textContent = text;
+    this.clearResetTimer();
+    this.resetTimer = window.setTimeout(() => {
+      if (this.hasButtonTarget) {
+        this.buttonTarget.textContent = this.defaultButtonText || "Copy";
+      }
+      this.resetTimer = null;
     }, 2000);
+  }
+
+  clearResetTimer() {
+    if (this.resetTimer) {
+      window.clearTimeout(this.resetTimer);
+      this.resetTimer = null;
+    }
   }
 }
