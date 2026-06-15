@@ -1,33 +1,72 @@
 # Product
 
-## Register
+## Summary
 
-product
+OSIG is AI-agent-first infrastructure for generating deterministic social preview images from structured text, remote assets, and reusable code templates. The product lets an AI agent avoid expensive model image generation when the needed output is a clean Open Graph or Twitter card image.
+
+The current app already supports URL rendering, signed URLs, a hosted FastMCP server, a local stdio MCP entrypoint, usage metering, quotas, Stripe subscriptions, and render observability. Future product work should make the MCP/API workflow the primary experience and keep the web UI focused on setup, docs, billing, examples, and diagnostics.
 
 ## Users
 
-OSIG is for developers, founders, publishers, and small teams who need Open Graph and Twitter card images without opening a design tool for every page. They are usually in a publishing or integration flow: making a page share correctly, preparing a job post, wiring metadata into a CMS, or creating signed image URLs for repeatable use.
+Primary users are AI agents working on behalf of developers, founders, publishers, indie hackers, marketers, and small teams. The agent needs to generate an image asset, embed an OG URL, or update repository metadata without asking a human to open a design tool.
 
-## Product Purpose
+Secondary users are humans configuring accounts, API keys, billing, self-hosting, templates, and validation. They need confidence that the generated image will be stable, cheap, and social-platform-ready.
 
-OSIG creates dynamic social preview images from URL parameters, signed API calls, and a guided onboarding flow. Success means a user can understand the available inputs, generate a useful image URL, copy the right metadata, and validate the result with minimal uncertainty.
+## Problem
+
+Agents can ask image models to generate social preview images, but that is often expensive, slow, inconsistent, and hard to revise precisely. Most OG images need layout, typography, background/logo placement, dimensions, and text handling more than they need generative art.
+
+OSIG should give agents a cheaper path: provide text and parameters, render with code, inspect the result, and publish the output as bytes or a signed URL.
+
+## Core Workflows
+
+- Agent discovers the image contract with MCP, chooses a template, normalizes parameters, renders previews, then saves a PNG/JPEG or creates a signed public URL.
+- Agent updates a website repository by generating OG metadata, preview images, cache-busting versions, and validation links.
+- Human signs up, retrieves an API key, checks usage/quota, manages billing, and reads integration docs.
+- Self-hoster runs the open source app and adapts templates for private use.
+- Admin investigates render failure rate, p95 render time, and recent generated images.
+
+## What Good Looks Like
+
+- An agent can generate a useful image without browsing the web UI.
+- The available styles, dimensions, fields, defaults, warnings, and publish steps are machine-readable.
+- Preview generation is cheap and repeatable.
+- Final output is deterministic, cacheable, and safe to embed in production metadata.
+- The hosted product makes paid access, watermark behavior, quotas, and entitlement states obvious.
+- The codebase stays self-hostable and open source without making hosted cloud usage unlimited or free by default.
+
+## Pricing Posture
+
+OSIG cloud should be paid for production use. The open source code can remain free to run independently, but hosted MCP/API rendering should require an account and should be bounded by quota, watermark, expiration, or subscription state.
+
+The default unpaid behavior is watermarking. Paid plans should remove watermarks and raise hosted usage limits. Free/demo access, if offered, should exist only to prove the workflow and should not become an unmetered production image CDN.
+
+## In Scope
+
+- MCP tools for image contract discovery, normalization, preview rendering, signed URL creation, and recent image listing.
+- API endpoints for render metrics and integration helpers that should not be exposed as unauthenticated MCP tools.
+- Open Graph and social preview templates, starting with article, logo, and job-board styles.
+- Deterministic code-rendered PNG/JPEG output.
+- Usage metering, quota enforcement, paid access, watermarking, and signed URL workflows.
+- Human-facing setup, docs, playground, billing, account, validation, and observability screens.
+- CMS/helper integrations when they map common content fields into OSIG's structured parameters.
+
+## Out Of Scope
+
+- Defaulting to model-generated images.
+- A general-purpose design editor.
+- A free unlimited hosted image rendering/CDN service.
+- Arbitrary remote control through MCP, such as database browsing, shell execution, or file access.
+- Complex brand-management suites until the agent-first OG workflow is clearly working.
 
 ## Brand Personality
 
-Clear, practical, builder-focused. The product should feel direct and useful before it feels polished. The voice should explain exactly what will happen, name constraints plainly, and keep momentum toward a working preview image.
+Clear, practical, technical, and reliable. OSIG should sound like a tool an agent can use safely: specific inputs, explicit constraints, predictable results, and no vague marketing language.
 
-## Anti-references
+## Success Criteria
 
-Avoid generic SaaS presentation patterns that bury the working generator under vague marketing copy. Avoid dense documentation pages that make the user assemble the workflow from scattered parameter notes. Avoid visual treatments that make OSIG feel like a novelty toy instead of a reliable publishing utility.
-
-## Design Principles
-
-- Put the working path first: every important page should move the user toward generating, copying, signing, or validating an image URL.
-- Prefer specific labels over mood copy: headings, buttons, and helper text should say what the user can do next.
-- Make examples inspectable: previews, code, parameters, and validation links should be easy to compare and copy.
-- Keep the interface calm: use visual hierarchy, spacing, and restrained color to reduce uncertainty.
-- Preserve technical trust: forms, docs, pricing, and settings should feel consistent and predictable.
-
-## Accessibility & Inclusion
-
-Target WCAG AA contrast for text and controls. Support keyboard navigation and visible focus states on all interactive elements. Respect reduced motion preferences. Do not rely on color alone for state, validation, or pricing emphasis.
+- Agents can complete the discover, preview, publish loop with MCP alone.
+- Hosted usage converts to paid plans because it is cheaper than model generation and easier than custom image code.
+- Render failures are observable and actionable.
+- New templates are easy to test against long text, missing images, invalid remote assets, and both supported dimensions.
+- Human users understand the difference between open source self-hosting and paid hosted cloud access.
