@@ -65,7 +65,7 @@
         </a>
 
         <div class="hidden items-center gap-7 lg:flex">
-          <a href="{% url 'home' %}#studio" class="nav-link">Studio</a>
+          <a href="{% url 'home' %}#agent-prompt" class="nav-link">MCP</a>
           <a href="{% url 'how_to' %}" class="nav-link">MCP docs</a>
           <a href="{% url 'blog_posts' %}" class="nav-link">Guides</a>
           <a href="{% url 'pricing' %}" class="nav-link">Pricing</a>
@@ -103,7 +103,7 @@
           </div>
           {% else %}
           <a href="{% url 'account_login' %}" class="btn-secondary">Log in</a>
-          <a href="{% url 'account_signup' %}" class="btn-primary">Create account</a>
+          <a href="{% url 'home' %}#agent-prompt" class="btn-primary">Copy MCP prompt</a>
           {% endif %}
         </div>
 
@@ -137,7 +137,7 @@
                   </button>
                 </div>
                 <div class="mt-8 grid gap-2">
-                  <a href="{% url 'home' %}#studio" class="nav-link rounded-md px-3 py-3 hover:bg-[var(--osig-surface-soft)]">Studio</a>
+                  <a href="{% url 'home' %}#agent-prompt" class="nav-link rounded-md px-3 py-3 hover:bg-[var(--osig-surface-soft)]">MCP</a>
                   <a href="{% url 'how_to' %}" class="nav-link rounded-md px-3 py-3 hover:bg-[var(--osig-surface-soft)]">MCP docs</a>
                   <a href="{% url 'blog_posts' %}" class="nav-link rounded-md px-3 py-3 hover:bg-[var(--osig-surface-soft)]">Guides</a>
                   <a href="{% url 'pricing' %}" class="nav-link rounded-md px-3 py-3 hover:bg-[var(--osig-surface-soft)]">Pricing</a>
@@ -147,7 +147,7 @@
                     <button class="btn-secondary w-full" data-action="dropdown#toggle" type="submit">Sign out</button>
                   </form>
                   {% else %}
-                  <a href="{% url 'account_signup' %}" class="btn-primary mt-4 w-full">Create account</a>
+                  <a href="{% url 'home' %}#agent-prompt" class="btn-primary mt-4 w-full">Copy MCP prompt</a>
                   {% endif %}
                 </div>
               </div>

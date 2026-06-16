@@ -21,6 +21,19 @@ class TestHomeView:
         response = client.get(url)
         assert "pages/home.html" in [t.name for t in response.templates]
 
+    def test_home_view_is_reduced_to_project_info_and_agent_prompt(self, client):
+        response = client.get(reverse("home"))
+
+        body = response.content.decode()
+        assert "Open Source Social Image Generator" in body
+        assert "Deterministic social images for AI agents." in body
+        assert "https://osig.app/mcp/" in body
+        assert "Copy prompt" in body
+        assert 'data-controller="image-generator"' not in body
+        assert 'data-controller="agent-studio"' not in body
+        assert "#generator" not in body
+        assert "#studio" not in body
+
 
 @pytest.mark.django_db
 class TestSeoSurface:

@@ -186,6 +186,16 @@ def image_contract() -> dict[str, Any]:
             "image_url": "Remote background image or logo URL. image_or_logo is accepted as an alias.",
             "key": "Optional profile key for quota and paid watermark state. Omit for self-hosted/local trials.",
         },
+        "access": {
+            "hosted_mcp_url": "https://osig.app/mcp/",
+            "authentication_required": False,
+            "trial_note": (
+                "The hosted MCP endpoint is currently public for trial use. Contract discovery, normalization, "
+                "preview rendering, and image export work without a profile key."
+            ),
+            "profile_key_note": "A profile key is optional unless the user wants quota and paid watermark state.",
+            "future_auth_note": "Profile-key auth is expected before paid production MCP access.",
+        },
         "workflow": [
             "Call get_image_contract or list_image_templates to choose a template.",
             "Call normalize_image_spec to canonicalize input and surface warnings.",

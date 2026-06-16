@@ -1,208 +1,89 @@
 {% extends "base.html" %}
-{% load webpack_loader static %}
+{% load static seo_tags %}
+
+{% block meta %}
+{% site_url "/" as home_url %}
+{% absolute_static "vendors/images/logo-square.png" as logo_square_url %}
+{% og_image_url image_url=logo_square_url as default_og_image %}
+<title>OSIG | Open Source Social Image Generator</title>
+<meta name="description" content="OSIG is open source, AI-agent-first infrastructure for generating deterministic Open Graph and social preview images through MCP and API workflows." />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="{{ home_url }}" />
+
+<meta property="og:type" content="website" />
+<meta property="og:title" content="OSIG | Open Source Social Image Generator" />
+<meta property="og:url" content="{{ home_url }}" />
+<meta property="og:description" content="Generate deterministic Open Graph and social preview images from structured inputs through MCP and API workflows." />
+<meta property="og:image" content="{{ default_og_image }}" />
+<meta property="og:locale" content="en_US" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:creator" content="@rasulkireev" />
+<meta name="twitter:site" content="@rasulkireev" />
+<meta name="twitter:title" content="OSIG | Open Source Social Image Generator" />
+<meta name="twitter:description" content="AI-agent-first infrastructure for deterministic Open Graph and social preview images." />
+<meta name="twitter:image" content="{{ default_og_image }}" />
+{% endblock meta %}
 
 {% block content %}
-<section class="site-container py-8 lg:py-10">
-  <div class="grid gap-6 lg:grid-cols-[0.72fr_1.28fr] lg:items-end">
+<section class="site-container-narrow py-14 lg:py-20">
+  <div class="flex flex-col gap-8 lg:gap-10">
     <div>
-      <p class="page-kicker">Agent Image Studio</p>
-      <h1 class="page-title mt-3">Code-rendered social images for agents.</h1>
+      <p class="page-kicker">Open Source Social Image Generator</p>
+      <h1 class="page-title mt-4">Deterministic social images for AI agents.</h1>
+      <p class="lede mt-6">
+        OSIG turns structured text, logos, and remote images into Open Graph and Twitter card images. Agents can inspect the template contract, render previews, and export image bytes without opening a design tool.
+      </p>
     </div>
-    <p class="lede max-w-3xl lg:justify-self-end">
-      Generate Open Graph images from structured text, preview them deterministically, then export bytes an agent can save into a repository.
-    </p>
+
+    <div class="grid gap-4 text-sm leading-6 text-[var(--osig-muted)] sm:grid-cols-3">
+      <div class="border-t border-[var(--osig-line)] pt-4">
+        <h2 class="font-bold text-[var(--osig-ink)]">Agent first</h2>
+        <p class="mt-2">The main workflow is MCP and API access for code agents working inside repositories.</p>
+      </div>
+      <div class="border-t border-[var(--osig-line)] pt-4">
+        <h2 class="font-bold text-[var(--osig-ink)]">Code generated</h2>
+        <p class="mt-2">Images are deterministic, repeatable, and cheaper to revise than model-generated art.</p>
+      </div>
+      <div class="border-t border-[var(--osig-line)] pt-4">
+        <h2 class="font-bold text-[var(--osig-ink)]">Open source</h2>
+        <p class="mt-2">Self-host the renderer, or use the hosted trial while production access evolves.</p>
+      </div>
+    </div>
   </div>
 </section>
 
-<section
-  id="studio"
-  class="site-container pb-14"
-  data-controller="agent-studio"
-  data-agent-studio-render-url-value="{% url 'studio_render' %}"
->
-  <div class="studio-shell">
-    <aside class="studio-sidebar">
-      <div>
-        <h2 class="studio-heading">MCP</h2>
-        <p class="studio-copy mt-2">Use the hosted Streamable HTTP endpoint or run the local stdio server beside this repo.</p>
+<section id="agent-prompt" class="site-container-narrow pb-16 lg:pb-24">
+  <div class="panel overflow-hidden" data-controller="clipboard">
+    <div class="border-b border-[var(--osig-line)] bg-[var(--osig-surface-soft)] px-5 py-4">
+      <p class="page-kicker">Start with MCP</p>
+      <h2 class="section-title mt-2 text-2xl lg:text-3xl">Copy this into your AI agent.</h2>
+      <p class="mt-3 text-sm leading-6 text-[var(--osig-muted)]">
+        The hosted MCP endpoint is currently available without authentication. Profile-key auth is expected before paid production MCP access.
+      </p>
+    </div>
+    <div class="grid gap-4 p-5">
+      <label for="mcp-agent-prompt" class="field-label">Agent prompt</label>
+      <textarea
+        id="mcp-agent-prompt"
+        data-clipboard-target="source"
+        readonly
+        rows="12"
+        class="copy-field"
+      >{{ mcp_agent_prompt }}</textarea>
+      <div class="flex flex-col gap-3 sm:flex-row">
+        <button
+          type="button"
+          data-clipboard-target="button"
+          data-action="clipboard#copy"
+          class="btn-primary"
+        >
+          Copy prompt
+        </button>
+        <a href="{% url 'how_to' %}" class="btn-secondary">Read docs</a>
+        <a href="https://github.com/rasulkireev/osig" class="btn-secondary">GitHub</a>
       </div>
-
-      <div>
-        <label class="field-label" for="mcp-endpoint">Hosted endpoint</label>
-        <div class="copy-row">
-          <input id="mcp-endpoint" class="copy-field min-h-0" readonly value="{{ mcp_http_endpoint }}">
-          <button type="button" class="btn-secondary min-h-0 px-3" data-action="click->agent-studio#copyField" data-copy-source="mcp-endpoint">Copy</button>
-        </div>
-      </div>
-
-      <div>
-        <label class="field-label" for="stdio-command">Local command</label>
-        <div class="copy-row">
-          <input id="stdio-command" class="copy-field min-h-0" readonly value="{{ mcp_stdio_command }}">
-          <button type="button" class="btn-secondary min-h-0 px-3" data-action="click->agent-studio#copyField" data-copy-source="stdio-command">Copy</button>
-        </div>
-      </div>
-
-      <div class="studio-note">
-        <span class="status-dot"></span>
-        <p>
-          {% if user.is_authenticated and user_key %}
-            Your profile key is applied to Studio renders. Hosted MCP accepts it as <code>X-API-Key</code> or bearer auth.
-          {% else %}
-            Trial renders are watermarked. Create an account when you want hosted quota and paid output state.
-          {% endif %}
-        </p>
-      </div>
-
-      {% if user.is_authenticated and user_key %}
-      <div>
-        <label class="field-label" for="profile-key">Profile key</label>
-        <div class="copy-row">
-          <input id="profile-key" class="copy-field min-h-0" readonly value="{{ user_key }}">
-          <button type="button" class="btn-secondary min-h-0 px-3" data-action="click->agent-studio#copyField" data-copy-source="profile-key">Copy</button>
-        </div>
-      </div>
-      {% endif %}
-    </aside>
-
-    <div class="studio-main">
-      <form data-agent-studio-target="form" data-action="submit->agent-studio#render" class="studio-editor">
-        {% csrf_token %}
-        {% if user_key %}
-          <input type="hidden" name="key" value="{{ user_key }}">
-        {% endif %}
-
-        <div class="studio-section-header">
-          <div>
-            <h2 class="studio-heading">Image spec</h2>
-            <p class="studio-copy mt-1">These fields mirror the MCP tool schema.</p>
-          </div>
-          <button type="submit" class="btn-primary">Render preview</button>
-        </div>
-
-        <div class="grid gap-4 md:grid-cols-3">
-          <div>
-            <label for="style" class="field-label">Template</label>
-            <select id="style" name="style" class="field">
-              {% for value, label in style_choices %}
-                <option value="{{ value }}">{{ label }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div>
-            <label for="site" class="field-label">Dimensions</label>
-            <select id="site" name="site" class="field">
-              {% for value, label in site_choices %}
-                <option value="{{ value }}">{{ label }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div>
-            <label for="format" class="field-label">Format</label>
-            <select id="format" name="format" class="field">
-              <option value="png">PNG</option>
-              <option value="jpeg">JPEG</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="grid gap-4 md:grid-cols-3">
-          <div>
-            <label for="font" class="field-label">Font</label>
-            <select id="font" name="font" class="field">
-              {% for value, label in font_choices %}
-                <option value="{{ value }}">{{ label }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div>
-            <label for="quality" class="field-label">Quality</label>
-            <input type="number" id="quality" name="quality" class="field" min="1" max="100" placeholder="85">
-          </div>
-          <div>
-            <label for="max_kb" class="field-label">Max KB</label>
-            <input type="number" id="max_kb" name="max_kb" class="field" min="1" placeholder="Optional">
-          </div>
-        </div>
-
-        <div>
-          <label for="title" class="field-label">Title</label>
-          <input type="text" id="title" name="title" class="field" value="Senior Django Engineer" maxlength="500">
-        </div>
-
-        <div>
-          <label for="subtitle" class="field-label">Subtitle</label>
-          <textarea id="subtitle" name="subtitle" class="field min-h-[6rem]" maxlength="1000">Build deterministic tools for agents that ship production work.</textarea>
-        </div>
-
-        <div class="grid gap-4 md:grid-cols-2">
-          <div>
-            <label for="eyebrow" class="field-label">Eyebrow</label>
-            <input type="text" id="eyebrow" name="eyebrow" class="field" value="Remote · Full-time" maxlength="240">
-          </div>
-          <div>
-            <label for="image_url" class="field-label">Image or logo URL</label>
-            <input type="url" id="image_url" name="image_url" class="field" placeholder="https://example.com/logo.png" maxlength="2000">
-          </div>
-        </div>
-      </form>
-
-      <section class="studio-output" aria-live="polite">
-        <div class="studio-section-header">
-          <div>
-            <h2 class="studio-heading">Output</h2>
-            <p class="studio-copy mt-1">Preview, metadata, and export payload.</p>
-          </div>
-          <span data-agent-studio-target="status" class="status-pill">Ready</span>
-        </div>
-
-        <div data-agent-studio-target="preview" class="preview-frame studio-preview">
-          <div class="px-6 text-center">
-            <p class="font-semibold text-[var(--osig-ink)]">No render yet</p>
-            <p class="mt-2 text-sm text-[var(--osig-muted)]">Submit the spec to render through the shared agent image service.</p>
-          </div>
-        </div>
-
-        <div data-agent-studio-target="warnings" class="hidden studio-warning"></div>
-
-        <div class="metadata-grid" data-agent-studio-target="metadata">
-          <div><span>Template</span><strong>base</strong></div>
-          <div><span>Size</span><strong>800 x 450</strong></div>
-          <div><span>Type</span><strong>image/png</strong></div>
-          <div><span>Hash</span><strong>waiting</strong></div>
-        </div>
-
-        <div>
-          <label for="studio-export" class="field-label">Repository payload</label>
-          <textarea id="studio-export" data-agent-studio-target="export" readonly class="copy-field min-h-[9rem]" placeholder="Rendered metadata and base64 output will appear here."></textarea>
-          <div class="mt-3 flex flex-col gap-3 sm:flex-row">
-            <button type="button" class="btn-secondary flex-1" data-action="click->agent-studio#copyExport" data-agent-studio-target="copyButton">Copy payload</button>
-            <button type="button" class="btn-secondary flex-1" data-action="click->agent-studio#downloadImage" data-agent-studio-target="downloadButton" disabled>Download image</button>
-          </div>
-        </div>
-      </section>
     </div>
   </div>
-
-  <div class="template-strip">
-    {% for template in template_cards %}
-      <article>
-        <h3>{{ template.name }}</h3>
-        <p>{{ template.description }}</p>
-      </article>
-    {% endfor %}
-  </div>
 </section>
-
-{% if show_confetti %}
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-<script>
-  confetti({
-    particleCount: 100,
-    spread: 70,
-    origin: { y: 0.6 }
-  });
-</script>
-{% endif %}
-
 {% endblock content %}

@@ -32,7 +32,8 @@ def create_mcp() -> FastMCP:
         "OSIG Agent Images MCP",
         instructions=(
             "Use these tools to discover deterministic social image templates, validate structured image specs, "
-            "render previews, and export image bytes for repository updates."
+            "render previews, and export image bytes for repository updates. The hosted OSIG MCP endpoint is "
+            "currently an unauthenticated trial; use a profile key only when the user provides one."
         ),
         on_duplicate="error",
     )
