@@ -16,12 +16,8 @@
       <p class="page-kicker">Account</p>
       <h1 class="section-title mt-3">Settings</h1>
       <p class="lede mt-4">Manage your hosted access, profile details, and API token.</p>
-      <div class="mt-6 flex flex-wrap gap-3">
-        <a href="{% url 'home' %}" class="btn-secondary">Back to OSIG</a>
-        <form method="post" action="{% url 'account_logout' %}">
-          {% csrf_token %}
-          <button type="submit" class="btn-ghost">Sign out</button>
-        </form>
+      <div class="mt-6">
+        {% include "components/account-actions.html" %}
       </div>
     </div>
 

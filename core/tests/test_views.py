@@ -61,6 +61,8 @@ class TestSeoSurface:
             body = response.content.decode()
             assert '<meta name="robots" content="noindex, follow" />' in body
             assert '<script type="application/ld+json">' not in body
+            assert "Back to OSIG" in body
+            assert reverse("home") in body
 
     def test_logout_page_is_noindexed_for_authenticated_users(self, client, django_user_model):
         user = django_user_model.objects.create_user(
