@@ -72,6 +72,6 @@ Do not expose private/admin MCP tools while this remains public. Profile keys ma
 ## Roadmap
 
 - Add more image styles.
-- Add more fonts.
+- Add more font providers and provider font examples.
 - Add more social/site presets.
 - Reintroduce mandatory MCP auth before paid hosted production access.

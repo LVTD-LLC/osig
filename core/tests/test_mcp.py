@@ -55,6 +55,9 @@ def test_get_image_contract_describes_agent_workflow():
     assert result.data["product"] == "OSIG Agent Images"
     assert "export_image" in " ".join(result.data["workflow"])
     assert result.data["choices"]["style"] == ["base", "logo", "job_classic", "job_logo", "job_clean"]
+    assert "google" in result.data["choices"]["font_provider"]
+    assert "google:inter" in result.data["choices"]["font"]
+    assert result.data["font_providers"]["google"]["font_value_format"] == "google:<family-slug>"
 
 
 @pytest.mark.django_db(transaction=True)

@@ -71,11 +71,14 @@ Current style choices are:
 - `job_logo`
 - `job_clean`
 
-Current font choices are:
+Current font support includes bundled fonts plus provider-backed fonts:
 
 - `helvetica`
 - `markerfelt`
 - `papyrus`
+- Google Fonts values using `google:<family-slug>`, for example `google:inter`, `google:roboto`, `google:playfair-display`, and `google:dm-sans`.
+
+Provider fonts are fetched through the Google Fonts CSS API on first render and cached locally through `core.font_providers`. Keep provider values namespaced and bounded; do not accept arbitrary font URLs from MCP/API callers.
 
 Future styles should be added through the router, MCP contract, docs, and tests together.
 

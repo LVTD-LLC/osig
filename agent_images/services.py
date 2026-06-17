@@ -10,8 +10,15 @@ from typing import Annotated, Any, Literal
 from django.conf import settings
 from django.db import close_old_connections
 from PIL import Image as PILImage
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from core.font_providers import (
+    BUNDLED_FONT_CHOICES,
+    FONT_PROVIDER_CHOICES,
+    GOOGLE_FONT_CHOICES,
+    is_provider_font,
+    normalize_font_name,
+)
 from core.image_styles import generate_image_router
 from core.image_utils import get_image_dimensions
 from core.models import Profile
@@ -21,12 +28,12 @@ from osig.utils import get_osig_logger
 
 StyleName = Literal["base", "logo", "job_classic", "job_logo", "job_clean"]
 SiteName = Literal["x", "meta"]
-FontName = Literal["helvetica", "markerfelt", "papyrus"]
+FontName = str
 OutputFormat = Literal["png", "jpeg"]
 
 STYLE_CHOICES: tuple[StyleName, ...] = ("base", "logo", "job_classic", "job_logo", "job_clean")
 SITE_CHOICES: tuple[SiteName, ...] = ("x", "meta")
-FONT_CHOICES: tuple[FontName, ...] = ("helvetica", "markerfelt", "papyrus")
+FONT_CHOICES: tuple[FontName, ...] = (*BUNDLED_FONT_CHOICES, *GOOGLE_FONT_CHOICES)
 FORMAT_CHOICES: tuple[OutputFormat, ...] = ("png", "jpeg")
 
 TEMPLATE_DEFINITIONS: dict[str, dict[str, str]] = {
@@ -71,7 +78,14 @@ class ImageSpec(BaseModel):
     ]
     style: Annotated[StyleName, Field(default="base", description="Image template to render.")]
     site: Annotated[SiteName, Field(default="x", description="Target social preview size preset.")]
-    font: Annotated[FontName, Field(default="helvetica", description="Bundled font family.")]
+    font: Annotated[
+        FontName,
+        Field(
+            default="helvetica",
+            max_length=120,
+            description="Bundled font id or provider font such as google:inter.",
+        ),
+    ]
     title: Annotated[str, Field(default="", max_length=500, description="Main image copy.")]
     subtitle: Annotated[str, Field(default="", max_length=1000, description="Secondary image copy.")]
     eyebrow: Annotated[str, Field(default="", max_length=240, description="Small context label.")]
@@ -84,6 +98,11 @@ class ImageSpec(BaseModel):
     quality: Annotated[int | None, Field(default=None, ge=1, le=100, description="PNG/JPEG compression quality.")]
     max_kb: Annotated[int | None, Field(default=None, ge=1, le=10000, description="Best-effort target size in KB.")]
     v: Annotated[str, Field(default="", max_length=100, description="Optional version token for caller bookkeeping.")]
+
+    @field_validator("font")
+    @classmethod
+    def normalize_font(cls, font: str) -> str:
+        return normalize_font_name(font)
 
 
 @dataclass(frozen=True)
@@ -176,7 +195,19 @@ def image_contract() -> dict[str, Any]:
             "style": list(STYLE_CHOICES),
             "site": list(SITE_CHOICES),
             "font": list(FONT_CHOICES),
+            "font_provider": list(FONT_PROVIDER_CHOICES),
             "format": list(FORMAT_CHOICES),
+        },
+        "font_providers": {
+            "google": {
+                "font_value_format": "google:<family-slug>",
+                "examples": list(GOOGLE_FONT_CHOICES),
+                "notes": [
+                    "Provider fonts are resolved through the Google Fonts CSS API at render time.",
+                    "The renderer caches downloaded font files locally after the first successful render.",
+                    "Use hyphenated family slugs, for example google:playfair-display or google:dm-sans.",
+                ],
+            }
         },
         "dimensions": dimensions,
         "fields": {
@@ -184,6 +215,7 @@ def image_contract() -> dict[str, Any]:
             "subtitle": "Supporting copy. Keep it short for social previews.",
             "eyebrow": "Small context label such as category, role type, or launch status.",
             "image_url": "Remote background image or logo URL. image_or_logo is accepted as an alias.",
+            "font": "Bundled font id or provider font value. Provider values use the form google:<family-slug>.",
             "key": "Optional profile key for quota and paid watermark state. Omit for self-hosted/local trials.",
         },
         "access": {
@@ -217,6 +249,9 @@ def normalize_image_spec(spec: ImageSpec, profile: Profile | None = None) -> Nor
     image_url = spec.image_url or spec.image_or_logo
     if spec.image_url and spec.image_or_logo and spec.image_url != spec.image_or_logo:
         warnings.append("Both image_url and image_or_logo were provided; image_url was used.")
+
+    if is_provider_font(spec.font):
+        warnings.append("Provider fonts are fetched from the third-party provider on first render and cached locally.")
 
     resolved_profile = profile or _profile_for_key(spec.key, warnings)
 
