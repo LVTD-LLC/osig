@@ -26,8 +26,8 @@ urlpatterns = [
     path("anymail/", include("anymail.urls")),
     path("stripe/", include("djstripe.urls", namespace="djstripe")),
     path("robots.txt", TemplateView.as_view(template_name="robots.txt", content_type="text/plain"), name="robots_txt"),
-    path("uses/", RedirectView.as_view(url="/", permanent=False), name="uses_trailing_slash_redirect"),
-    path("uses", RedirectView.as_view(url="/", permanent=False), name="uses"),
+    path("uses/", RedirectView.as_view(url="/", permanent=True), name="uses_trailing_slash_redirect"),
+    path("uses", RedirectView.as_view(url="/", permanent=True), name="uses"),
     path("", include("core.urls")),
     path(
         "sitemap.xml",

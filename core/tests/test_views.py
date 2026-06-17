@@ -92,7 +92,7 @@ class TestSeoSurface:
         for path in removed_paths:
             response = client.get(path)
 
-            assert response.status_code == 302
+            assert response.status_code == 301
             assert response["Location"] == reverse("home")
 
     def test_site_url_uses_request_scheme_for_local_preview(self):
