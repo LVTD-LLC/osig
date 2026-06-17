@@ -62,15 +62,6 @@ def test_asgi_application_mounts_mcp_without_auth_middleware():
     assert not isinstance(mcp_mounts[0].app, McpAuthMiddleware)
 
 
-def test_asgi_mcp_mount_uses_stateless_http_transport():
-    from osig.asgi import mcp_application
-
-    with TestClient(mcp_application):
-        streamable_http_endpoint = mcp_application.routes[0].endpoint
-
-        assert streamable_http_endpoint.session_manager.stateless is True
-
-
 def test_asgi_mcp_stateless_http_does_not_require_session_affinity():
     from osig.asgi import mcp_application
 
