@@ -675,7 +675,7 @@
 
   .landing-page {
     position: relative;
-    isolate: isolate;
+    isolation: isolate;
     min-height: 100vh;
     overflow: hidden;
     background:
