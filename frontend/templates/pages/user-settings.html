@@ -16,6 +16,13 @@
       <p class="page-kicker">Account</p>
       <h1 class="section-title mt-3">Settings</h1>
       <p class="lede mt-4">Manage your hosted access, profile details, and API token.</p>
+      <div class="mt-6 flex flex-wrap gap-3">
+        <a href="{% url 'home' %}" class="btn-secondary">Back to OSIG</a>
+        <form method="post" action="{% url 'account_logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="btn-ghost">Sign out</button>
+        </form>
+      </div>
     </div>
 
     {% include "components/confirm-email.html" with email_verified=email_verified %}
@@ -27,7 +34,6 @@
           <h2 class="text-lg font-bold">Upgrade hosted images</h2>
           <p class="mt-2 text-sm leading-6 text-[var(--osig-muted)]">Remove the watermark and keep using the hosted generator.</p>
         </div>
-        <a href="{% url 'pricing' %}" class="btn-secondary">Compare plans</a>
       </div>
       <div class="mt-5 grid gap-3 md:grid-cols-3">
         <a href="{% url 'user_upgrade_checkout_session' pk=user.id plan='monthly' %}" class="btn-primary">Start monthly</a>

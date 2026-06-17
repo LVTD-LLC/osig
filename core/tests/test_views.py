@@ -1,4 +1,5 @@
 import pytest
+from allauth.account.models import EmailAddress
 from django.conf import settings
 from django.contrib.sites.models import Site
 from django.test import RequestFactory, override_settings
@@ -75,6 +76,25 @@ class TestSeoSurface:
         body = response.content.decode()
         assert '<meta name="robots" content="noindex, follow" />' in body
         assert '<script type="application/ld+json">' not in body
+
+    def test_settings_page_keeps_account_actions_without_removed_page_links(self, client, django_user_model):
+        user = django_user_model.objects.create_user(
+            username="settings-user",
+            email="settings@example.com",
+            password="password",
+        )
+        EmailAddress.objects.create(user=user, email=user.email, primary=True, verified=True)
+        client.force_login(user)
+
+        response = client.get(reverse("settings"))
+
+        assert response.status_code == 200
+        body = response.content.decode()
+        assert "Back to OSIG" in body
+        assert "Sign out" in body
+        assert reverse("account_logout") in body
+        assert "Compare plans" not in body
+        assert reverse("pricing") not in body
 
     def test_removed_public_pages_redirect_home(self, client):
         removed_paths = [
