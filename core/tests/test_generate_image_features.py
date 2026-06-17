@@ -139,6 +139,12 @@ class TestAgentImageService:
 
         assert "Unsupported font provider 'adobe'" in str(exc.value)
 
+    def test_image_spec_rejects_unknown_google_font_family(self):
+        with pytest.raises(ValidationError) as exc:
+            ImageSpec(style="base", font="google:noto-color-emoji", title="Unknown family")
+
+        assert "Unknown Google Font family 'noto-color-emoji'" in str(exc.value)
+
     def test_render_image_supports_png_and_jpeg_content_types(self):
         png_payload = render_image(
             ImageSpec(style="base", site="x", title="Format Test", subtitle="Content types", format="png")
@@ -221,6 +227,10 @@ def test_google_font_provider_loader_downloads_and_caches_font(settings, tmp_pat
 
         def raise_for_status(self):
             return None
+
+        def iter_content(self, chunk_size=65536):
+            for index in range(0, len(self.content), chunk_size):
+                yield self.content[index : index + chunk_size]
 
     def fake_get(url, *args, **kwargs):
         requested_urls.append(url)

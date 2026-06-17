@@ -27,6 +27,7 @@ GOOGLE_FONT_CHOICES: tuple[str, ...] = (
     "google:merriweather",
     "google:space-grotesk",
 )
+SUPPORTED_GOOGLE_FONT_SLUGS = tuple(choice.split(":", 1)[1] for choice in GOOGLE_FONT_CHOICES)
 
 GOOGLE_FONT_FAMILY_NAMES: dict[str, str] = {
     "dm-sans": "DM Sans",
@@ -81,7 +82,16 @@ def normalize_font_name(font: str | None) -> str:
         raise ValueError("Provider fonts must include a family, for example 'google:inter'.")
 
     if not FONT_SLUG_RE.match(family_slug):
-        raise ValueError("Provider font families may contain only letters, numbers, spaces, plus signs, or hyphens.")
+        raise ValueError(
+            "Provider font families may contain only lowercase letters, digits, and hyphens "
+            "(e.g. 'playfair-display')."
+        )
+
+    if provider == "google" and family_slug not in SUPPORTED_GOOGLE_FONT_SLUGS:
+        raise ValueError(
+            f"Unknown Google Font family '{family_slug}'. "
+            "Use a supported family such as 'google:inter' or 'google:playfair-display'."
+        )
 
     return f"{provider}:{family_slug}"
 
@@ -161,15 +171,23 @@ def _download_google_font(family_slug: str) -> bytes:
     if parsed_url.scheme != "https" or parsed_url.netloc != GOOGLE_FONTS_STATIC_HOST:
         raise FontProviderError("Google Fonts CSS returned an unsupported font URL.")
 
-    font_response = requests.get(font_url, timeout=timeout_seconds)
+    max_bytes = _font_fetch_max_bytes()
+    font_response = requests.get(font_url, timeout=timeout_seconds, stream=True)
     font_response.raise_for_status()
-    font_bytes = font_response.content
+    chunks: list[bytes] = []
+    total_bytes = 0
+    for chunk in font_response.iter_content(chunk_size=65536):
+        if not chunk:
+            continue
+        total_bytes += len(chunk)
+        if total_bytes > max_bytes:
+            raise FontProviderError("Google Fonts returned a font file larger than the allowed limit.")
+        chunks.append(chunk)
+
+    font_bytes = b"".join(chunks)
 
     if not font_bytes:
         raise FontProviderError("Google Fonts returned an empty font file.")
-
-    if len(font_bytes) > _font_fetch_max_bytes():
-        raise FontProviderError("Google Fonts returned a font file larger than the allowed limit.")
 
     logger.info("Cached Google font", family=family_name, bytes=len(font_bytes))
     return font_bytes
