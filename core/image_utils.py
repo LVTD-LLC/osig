@@ -75,6 +75,7 @@ def draw_wrapped_text(
 
 
 def load_font(font, size):
+    provider_font_requested = is_provider_font(font)
     try:
         normalized_font = normalize_font_name(font)
         if is_provider_font(normalized_font):
@@ -84,6 +85,8 @@ def load_font(font, size):
         return ImageFont.truetype(font_path, size)
     except Exception as e:
         logger.error("Error loading font", font=font, error=str(e))
+        if provider_font_requested:
+            raise
         return ImageFont.load_default().font_variant(size=size)
 
 

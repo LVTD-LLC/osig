@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import uuid
 from pathlib import Path
 from urllib.parse import quote_plus, unquote_plus, urlparse
 
@@ -52,7 +53,8 @@ GOOGLE_FONTS_CSS_URL = "https://fonts.googleapis.com/css2"
 GOOGLE_FONTS_STATIC_HOST = "fonts.gstatic.com"
 FONT_URL_RE = re.compile(r"url\((?P<quote>['\"]?)(?P<url>https://[^)'\"\s]+)(?P=quote)\)")
 FONT_FACE_BLOCK_RE = re.compile(r"@font-face\s*{.*?}", re.DOTALL)
-FONT_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,95}$")
+FONT_SLUG_RE = re.compile(r"^[a-z0-9]([a-z0-9-]{0,94}[a-z0-9])?$")
+LATIN_UNICODE_RANGE_RE = re.compile(r"unicode-range\s*:\s*U\+0000-00FF", re.IGNORECASE)
 FONT_FILE_MAX_BYTES = 2_000_000
 
 
@@ -112,9 +114,12 @@ def provider_font_path(font: str) -> Path:
 
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     font_bytes = _download_google_font(family_slug)
-    temp_path = cache_path.with_suffix(f"{cache_path.suffix}.tmp")
-    temp_path.write_bytes(font_bytes)
-    temp_path.replace(cache_path)
+    temp_path = cache_path.with_name(f"{cache_path.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        temp_path.write_bytes(font_bytes)
+        temp_path.replace(cache_path)
+    finally:
+        temp_path.unlink(missing_ok=True)
     return cache_path
 
 
@@ -126,14 +131,10 @@ def _family_slug(family: str) -> str:
 
 
 def _google_family_name(family_slug: str) -> str:
-    if family_slug in GOOGLE_FONT_FAMILY_NAMES:
+    if family_slug in SUPPORTED_GOOGLE_FONT_SLUGS:
         return GOOGLE_FONT_FAMILY_NAMES[family_slug]
 
-    parts = []
-    uppercase_tokens = {"dm", "ibm", "jp", "kr", "pt", "sc", "tc", "thai"}
-    for part in family_slug.split("-"):
-        parts.append(part.upper() if part in uppercase_tokens else part.capitalize())
-    return " ".join(parts)
+    raise FontProviderError(f"Unsupported Google Font family '{family_slug}'.")
 
 
 def _font_cache_dir() -> Path:
@@ -195,14 +196,10 @@ def _download_google_font(family_slug: str) -> bytes:
 
 def _extract_font_url(css: str) -> str:
     for block in FONT_FACE_BLOCK_RE.findall(css):
-        if "U+0000-00FF" not in block:
+        if not LATIN_UNICODE_RANGE_RE.search(block):
             continue
         match = FONT_URL_RE.search(block)
         if match:
             return match.group("url")
 
-    matches = FONT_URL_RE.findall(css)
-    if matches:
-        return matches[-1][1]
-
-    raise FontProviderError("Google Fonts CSS did not contain a font file URL.")
+    raise FontProviderError("Google Fonts CSS did not contain a Basic Latin font file URL.")

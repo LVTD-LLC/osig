@@ -145,6 +145,12 @@ class TestAgentImageService:
 
         assert "Unknown Google Font family 'noto-color-emoji'" in str(exc.value)
 
+    def test_image_spec_rejects_malformed_google_font_slug(self):
+        with pytest.raises(ValidationError) as exc:
+            ImageSpec(style="base", font="google:inter-", title="Malformed family")
+
+        assert "Provider font families may contain only lowercase letters" in str(exc.value)
+
     def test_render_image_supports_png_and_jpeg_content_types(self):
         png_payload = render_image(
             ImageSpec(style="base", site="x", title="Format Test", subtitle="Content types", format="png")
@@ -260,3 +266,35 @@ def test_google_font_provider_loader_downloads_and_caches_font(settings, tmp_pat
         "https://fonts.googleapis.com/css2?family=Inter:wght@400&display=swap",
         "https://fonts.gstatic.com/s/inter/v1/inter.ttf",
     ]
+
+
+def test_google_font_provider_requires_basic_latin_font_url():
+    from core.font_providers import FontProviderError, _extract_font_url
+
+    css = (
+        "@font-face {"
+        "font-family: 'Inter';"
+        "src: url(https://fonts.gstatic.com/s/inter/v1/inter-cyrillic.ttf) format('truetype');"
+        "unicode-range: U+0400-04FF;"
+        "}"
+    )
+
+    with pytest.raises(FontProviderError) as exc:
+        _extract_font_url(css)
+
+    assert "Basic Latin" in str(exc.value)
+
+
+def test_provider_font_load_errors_are_not_silently_swallowed(monkeypatch):
+    import core.image_utils as image_utils
+    from core.font_providers import FontProviderError
+
+    def unavailable_provider_font_path(font):
+        raise FontProviderError("Google Fonts unavailable")
+
+    monkeypatch.setattr(image_utils, "provider_font_path", unavailable_provider_font_path)
+
+    with pytest.raises(FontProviderError) as exc:
+        image_utils.load_font("google:inter", 24)
+
+    assert "Google Fonts unavailable" in str(exc.value)
