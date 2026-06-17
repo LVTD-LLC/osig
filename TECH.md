@@ -97,6 +97,7 @@ Future styles should be added through the router, MCP contract, docs, and tests 
 - Render attempts are stored in `RenderAttempt`.
 - `agent_images.services.render_image` retries transient upstream fetch failures and records attempt duration/error type.
 - Admin metrics expose total attempts, failed attempts, fail rate, p95 render time, and error counts.
+- Hosted and standalone HTTP MCP run FastMCP in stateless Streamable HTTP mode. The exposed tools do not depend on MCP session state, and stateless mode avoids process-local `mcp-session-id` failures under multi-worker ASGI deployments.
 
 ## Deployment
 

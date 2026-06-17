@@ -104,6 +104,8 @@ class TestSeoSurface:
         body = response.content.decode()
         assert "MCP docs" in body
         assert "https://osig.app/mcp/" in body
+        assert "First, set up or verify the OSIG MCP server connection" in body
+        assert "Do not manually call the MCP endpoint with ad hoc HTTP requests" in body
         assert "get_image_contract" in body
         assert "export_image" in body
         assert "https://osig.app/g" not in body

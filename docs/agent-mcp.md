@@ -26,6 +26,29 @@ Example MCP client config:
 }
 ```
 
+Paste this prompt into an agent client after adding the MCP server config:
+
+```text
+Use OSIG to generate deterministic Open Graph and social preview images for this project.
+
+First, set up or verify the OSIG MCP server connection in this agent client:
+
+MCP server name: osig
+MCP server URL: https://osig.app/mcp/
+Authentication: no API key is required for the current hosted trial.
+
+Do not manually call the MCP endpoint with ad hoc HTTP requests unless this client cannot configure remote MCP servers. After the MCP server is configured, use the OSIG MCP tools exposed by the client.
+
+Workflow:
+1. Verify the configured OSIG MCP server exposes get_image_contract, normalize_image_spec, render_image_preview, and export_image.
+2. Call get_image_contract to inspect supported templates, fields, and dimensions.
+3. Call normalize_image_spec with structured title, subtitle, eyebrow, image_url, style, site, and format values.
+4. Call render_image_preview to inspect image metadata and preview bytes. Iterate until the preview is ready.
+5. Call export_image when the asset is ready to save into a repository or publishing workflow.
+
+Use a profile key only if I provide one. Keep generated images deterministic and use preview before export.
+```
+
 ## Local HTTP Server
 
 Local commands expect the normal Django environment. If you do not already have `.env`, start from the example:
@@ -86,12 +109,14 @@ Admin render metrics are not exposed through the unauthenticated MCP server.
 
 ## Recommended Agent Workflow
 
-1. Call `get_image_contract`.
-2. Choose `style`, `site`, `font`, and copy fields.
-3. Call `normalize_image_spec` to catch canonical params and warnings.
-4. Call `render_image_preview` while iterating.
-5. Call `export_image` once the preview is ready.
-6. Save the returned bytes into the repository and point `og:image`, `twitter:image`, and schema image fields at that committed/static asset.
+1. Configure OSIG as an MCP server in the agent client.
+2. Verify the configured server exposes the OSIG tools.
+3. Call `get_image_contract`.
+4. Choose `style`, `site`, `font`, and copy fields.
+5. Call `normalize_image_spec` to catch canonical params and warnings.
+6. Call `render_image_preview` while iterating.
+7. Call `export_image` once the preview is ready.
+8. Save the returned bytes into the repository and point `og:image`, `twitter:image`, and schema image fields at that committed/static asset.
 
 ## Serving Model
 
@@ -99,5 +124,10 @@ OSIG serves MCP through FastMCP in two ways:
 
 - ASGI mount: `osig/asgi.py` mounts `mcp.http_app(path="/")` at `/mcp` beside Django.
 - Sidecar: `mcp_http_server.py` runs the same FastMCP server as a separate Streamable HTTP process.
+
+Both HTTP serving modes use FastMCP stateless Streamable HTTP because OSIG tools
+are request/response actions and do not need MCP session state. This avoids
+process-local session affinity failures when the hosted ASGI app runs multiple
+Gunicorn workers.
 
 The ASGI mount requires an async server such as Gunicorn with `uvicorn_worker.UvicornWorker`.
