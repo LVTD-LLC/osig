@@ -60,3 +60,52 @@ def test_asgi_application_mounts_mcp_without_auth_middleware():
 
     assert len(mcp_mounts) == 1
     assert not isinstance(mcp_mounts[0].app, McpAuthMiddleware)
+
+
+def test_asgi_mcp_stateless_http_does_not_require_session_affinity():
+    from osig.asgi import mcp_application
+
+    initialize_payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-03-26",
+            "capabilities": {},
+            "clientInfo": {"name": "pytest", "version": "1"},
+        },
+    }
+    headers = {
+        "Accept": "application/json, text/event-stream",
+        "Content-Type": "application/json",
+    }
+
+    with TestClient(mcp_application) as client:
+        initialized = client.post("/", headers=headers, json=initialize_payload)
+        stale_session = client.post(
+            "/",
+            headers={**headers, "mcp-session-id": "missing"},
+            json=initialize_payload,
+        )
+
+    assert initialized.status_code == 200
+    assert "mcp-session-id" not in initialized.headers
+    assert stale_session.status_code == 200
+    assert "Session not found" not in stale_session.text
+
+
+def test_standalone_mcp_http_server_uses_stateless_transport(monkeypatch):
+    import agent_images.mcp as agent_mcp
+    import mcp_http_server
+
+    run_kwargs = {}
+
+    def fake_run(**kwargs):
+        run_kwargs.update(kwargs)
+
+    monkeypatch.setattr(agent_mcp.mcp, "run", fake_run)
+
+    mcp_http_server.main()
+
+    assert run_kwargs["transport"] == "http"
+    assert run_kwargs["stateless_http"] is True

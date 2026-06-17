@@ -63,6 +63,10 @@ http://127.0.0.1:8765/mcp
 
 Set `MCP_HOST`, `MCP_PORT`, or `MCP_PATH` to override that.
 
+Both hosted and standalone HTTP MCP are configured with FastMCP stateless
+Streamable HTTP. OSIG tools do not rely on MCP session state, and stateless mode
+keeps requests reliable when the ASGI server runs multiple Gunicorn workers.
+
 ## MCP Trial Auth
 
 MCP is intentionally narrow while it is easy to try from Codex and other agent clients.

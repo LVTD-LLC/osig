@@ -21,7 +21,9 @@ django_application = get_asgi_application()
 
 from agent_images.mcp import mcp  # noqa: E402
 
-mcp_application = mcp.http_app(path="/")
+# OSIG's MCP tools are stateless request/response actions. Stateless HTTP avoids
+# process-local session affinity failures when Gunicorn runs multiple workers.
+mcp_application = mcp.http_app(path="/", stateless_http=True)
 
 
 def redirect_mcp(request: Request) -> RedirectResponse:

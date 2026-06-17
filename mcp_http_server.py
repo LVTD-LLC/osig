@@ -19,6 +19,7 @@ def main() -> None:
         host=os.getenv("MCP_HOST", "127.0.0.1"),
         port=_port(),
         path=os.getenv("MCP_PATH", "/mcp"),
+        stateless_http=True,
     )
 
 

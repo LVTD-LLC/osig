@@ -6,14 +6,14 @@
 {% absolute_static "vendors/images/logo-square.png" as logo_square_url %}
 {% og_image_url image_url=logo_square_url as page_og_image %}
 <title>MCP Docs | OSIG</title>
-<meta name="description" content="Use OSIG from AI agents through MCP. Discover templates, normalize image specs, render previews, and export image bytes." />
+<meta name="description" content="Set up OSIG as an MCP server for AI agents, then discover templates, render previews, and export deterministic image bytes." />
 <meta name="robots" content="index, follow" />
 <link rel="canonical" href="{{ page_url }}" />
 
 <meta property="og:type" content="website" />
 <meta property="og:title" content="MCP Docs | OSIG" />
 <meta property="og:url" content="{{ page_url }}" />
-<meta property="og:description" content="Use OSIG from AI agents through MCP. Discover templates, normalize image specs, render previews, and export image bytes." />
+<meta property="og:description" content="Set up OSIG as an MCP server for AI agents, then discover templates, render previews, and export deterministic image bytes." />
 <meta property="og:image" content="{{ page_og_image }}" />
 <meta property="og:locale" content="en_US" />
 
@@ -21,7 +21,7 @@
 <meta name="twitter:creator" content="@rasulkireev" />
 <meta name="twitter:site" content="@rasulkireev" />
 <meta name="twitter:title" content="MCP Docs | OSIG" />
-<meta name="twitter:description" content="Use OSIG from AI agents through MCP. Discover templates, normalize image specs, render previews, and export image bytes." />
+<meta name="twitter:description" content="Set up OSIG as an MCP server for AI agents, then discover templates, render previews, and export deterministic image bytes." />
 <meta name="twitter:image" content="{{ page_og_image }}" />
 {% endblock meta %}
 
@@ -30,6 +30,7 @@
   <aside class="hidden lg:block">
     <nav class="sticky top-24 space-y-2 text-sm" aria-label="Docs sections">
       <a href="#endpoint" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Endpoint</a>
+      <a href="#prompt" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Agent prompt</a>
       <a href="#workflow" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Workflow</a>
       <a href="#tools" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Tools</a>
       <a href="#spec" class="nav-link block rounded-md px-3 py-2 hover:bg-[var(--osig-surface-soft)]">Image spec</a>
@@ -50,8 +51,31 @@
       <pre class="code-block"><code>https://osig.app/mcp/</code></pre>
       <p>Hosted MCP accepts a profile key with either <code>X-API-Key</code> or <code>Authorization: Bearer ...</code>. The current public trial exposes only image-generation capabilities.</p>
 
+      <h2 id="prompt">Agent prompt</h2>
+      <p>Paste this after adding OSIG as an MCP server in the agent client:</p>
+      <pre class="code-block"><code>Use OSIG to generate deterministic Open Graph and social preview images for this project.
+
+First, set up or verify the OSIG MCP server connection in this agent client:
+
+MCP server name: osig
+MCP server URL: https://osig.app/mcp/
+Authentication: no API key is required for the current hosted trial.
+
+Do not manually call the MCP endpoint with ad hoc HTTP requests unless this client cannot configure remote MCP servers. After the MCP server is configured, use the OSIG MCP tools exposed by the client.
+
+Workflow:
+1. Verify the configured OSIG MCP server exposes get_image_contract, normalize_image_spec, render_image_preview, and export_image.
+2. Call get_image_contract to inspect supported templates, fields, and dimensions.
+3. Call normalize_image_spec with structured title, subtitle, eyebrow, image_url, style, site, and format values.
+4. Call render_image_preview to inspect image metadata and preview bytes. Iterate until the preview is ready.
+5. Call export_image when the asset is ready to save into a repository or publishing workflow.
+
+Use a profile key only if I provide one. Keep generated images deterministic and use preview before export.</code></pre>
+
       <h2 id="workflow">Workflow</h2>
       <ol>
+        <li>Configure OSIG as an MCP server in the agent client.</li>
+        <li>Verify the configured server exposes <code>get_image_contract</code>, <code>normalize_image_spec</code>, <code>render_image_preview</code>, and <code>export_image</code>.</li>
         <li>Call <code>get_image_contract</code> or <code>list_image_templates</code>.</li>
         <li>Build an image spec with explicit template, dimensions, copy, format, and optional asset URL.</li>
         <li>Call <code>normalize_image_spec</code> to check defaults and warnings.</li>
