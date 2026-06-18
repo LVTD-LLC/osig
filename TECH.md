@@ -31,15 +31,18 @@ make test core/tests/test_mcp.py
 make shell
 make migrate
 npm run build
-uv run python mcp_server.py
-uv run fastmcp list --command "uv run python mcp_server.py"
+sh scripts/mcp-dev migrate
+sh scripts/mcp-dev list
+sh scripts/mcp-dev call get_image_contract --json
+sh scripts/mcp-dev http
+sh scripts/mcp-dev test
 ```
 
 ## Primary Product Interfaces
 
 - Hosted MCP trial: `/mcp/`, currently public/unauthenticated for agent experimentation.
-- Standalone local MCP HTTP sidecar: `uv run python mcp_http_server.py`.
-- Local MCP stdio: `uv run python mcp_server.py`.
+- Standalone local MCP HTTP sidecar: `sh scripts/mcp-dev http`.
+- Local MCP stdio: `sh scripts/mcp-dev stdio`.
 - Studio render API: `POST /api/studio/render`.
 - Admin render metrics API: `GET /api/admin/render-metrics`.
 

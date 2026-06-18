@@ -47,10 +47,31 @@ cp .env.example .env
 
 For native local runs without Docker Postgres, set `DATABASE_URL=sqlite:///db.sqlite3` in `.env`.
 
+For fast native MCP iteration without creating `.env`, use the repo wrapper. It
+loads `.env.example`, overlays `.env` when present, and defaults to sqlite when
+`.env` is missing:
+
+```bash
+sh scripts/mcp-dev migrate
+sh scripts/mcp-dev list
+sh scripts/mcp-dev call get_image_contract --json
+sh scripts/mcp-dev call normalize_image_spec --input-json '{"spec":{"style":"base","title":"Local MCP check","site":"meta"}}' --json
+sh scripts/mcp-dev test
+```
+
+The equivalent Make targets are:
+
+```bash
+make mcp-migrate
+make mcp-list
+make mcp-call TOOL=get_image_contract ARGS=--json
+make mcp-test
+```
+
 Run the standalone FastMCP Streamable HTTP server:
 
 ```bash
-uv run python mcp_http_server.py
+sh scripts/mcp-dev http
 ```
 
 Default local endpoint:
@@ -62,7 +83,7 @@ http://127.0.0.1:8765/mcp
 Override host, port, or path with:
 
 ```bash
-MCP_HOST=0.0.0.0 MCP_PORT=8765 MCP_PATH=/mcp uv run python mcp_http_server.py
+MCP_HOST=0.0.0.0 MCP_PORT=8765 MCP_PATH=/mcp sh scripts/mcp-dev http
 ```
 
 ## Local Stdio Server
@@ -70,19 +91,19 @@ MCP_HOST=0.0.0.0 MCP_PORT=8765 MCP_PATH=/mcp uv run python mcp_http_server.py
 For stdio-based clients:
 
 ```bash
-uv run python mcp_server.py
+sh scripts/mcp-dev stdio
 ```
 
 Inspect the tool list:
 
 ```bash
-uv run fastmcp list --command "uv run python mcp_server.py"
+sh scripts/mcp-dev list
 ```
 
 If you are passing ad hoc environment values instead of using `.env`, put them inside the spawned command string:
 
 ```bash
-uv run fastmcp list --command "sh -c 'set -a; . ./.env.example; set +a; uv run python mcp_server.py'"
+uv run fastmcp list --command "sh -c 'set -a; . ./.env.example; set +a; export DATABASE_URL=sqlite:///db.sqlite3; uv run python mcp_server.py'"
 ```
 
 ## Tools

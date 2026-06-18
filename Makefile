@@ -20,6 +20,24 @@ migrate:
 test:
 	docker compose -f docker-compose-local.yml run --rm backend uv run --no-sync pytest $(filter-out $@,$(MAKECMDGOALS))
 
+mcp-list:
+	sh scripts/mcp-dev list
+
+mcp-call:
+	sh scripts/mcp-dev call $(TOOL) $(ARGS)
+
+mcp-inspect:
+	sh scripts/mcp-dev inspect $(ARGS)
+
+mcp-http:
+	sh scripts/mcp-dev http
+
+mcp-migrate:
+	sh scripts/mcp-dev migrate $(ARGS)
+
+mcp-test:
+	sh scripts/mcp-dev test $(ARGS)
+
 test-webhook:
 	docker compose -f docker-compose-local.yml run --rm stripe trigger customer.subscription.created
 

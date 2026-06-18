@@ -29,6 +29,17 @@ cp .env.example .env
 
 If you are not running Docker Postgres locally, set `DATABASE_URL=sqlite:///db.sqlite3` in `.env`.
 
+For the fastest native MCP iteration loop, use the repo wrapper. It loads
+`.env.example`, overlays `.env` when present, and uses sqlite by default when
+`.env` is missing:
+
+```bash
+sh scripts/mcp-dev migrate
+sh scripts/mcp-dev list
+sh scripts/mcp-dev call get_image_contract --json
+sh scripts/mcp-dev test
+```
+
 Run tests:
 
 ```bash
@@ -52,7 +63,7 @@ gunicorn osig.asgi:application --worker-class uvicorn_worker.UvicornWorker
 The standalone MCP process uses:
 
 ```bash
-uv run python mcp_http_server.py
+sh scripts/mcp-dev http
 ```
 
 By default, local MCP HTTP runs at:
