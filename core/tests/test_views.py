@@ -32,6 +32,8 @@ class TestHomeView:
         assert "Copy AI prompt" in body
         assert "Copy the setup prompt." in body
         assert "Paste it into your coding agent" in body
+        assert 'id="agent-prompt-copy-description"' in body
+        assert 'aria-describedby="agent-prompt-copy-description"' in body
         assert 'class="sr-only"' in body
         assert "MCP docs" not in body
         assert "Pricing" not in body
