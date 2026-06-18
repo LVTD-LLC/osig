@@ -344,6 +344,12 @@ def _layer_dump(layer: CanvasLayer) -> dict[str, Any]:
     return layer.model_dump(exclude_none=True, by_alias=True)
 
 
+def _fill_dump(fill: CanvasFill) -> str | dict[str, Any]:
+    if isinstance(fill, LinearGradientFill):
+        return fill.model_dump(by_alias=True)
+    return fill
+
+
 def _layer_bounds(layer: CanvasLayer) -> tuple[int, int, int, int] | None:
     if isinstance(layer, TextLayer):
         width = layer.width or _estimate_text_width(layer)
@@ -572,7 +578,7 @@ def normalize_image_spec(spec: ImageSpec, profile: Profile | None = None) -> Nor
     public_spec: dict[str, Any] = {
         "width": width,
         "height": height,
-        "background": spec.background,
+        "background": _fill_dump(spec.background),
         "layers": [_layer_dump(layer) for layer in spec.layers],
         "format": spec.format,
     }

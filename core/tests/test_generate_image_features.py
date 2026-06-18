@@ -158,6 +158,26 @@ class TestAgentImageService:
         assert normalized.spec["width"] == 800
         assert normalized.spec["height"] == 450
 
+    def test_canvas_background_supports_gradient_fill(self):
+        spec = ImageSpec.model_validate(
+            {
+                "width": 300,
+                "height": 220,
+                "background": {"type": "linear_gradient", "from": "#1d4ed8", "to": "#7c3aed"},
+                "layers": [{"kind": "text", "x": 20, "y": 20, "text": "Gradient", "font_size": 28}],
+            }
+        )
+
+        payload = render_image(spec)
+
+        assert payload["content_type"] == "image/png"
+        assert payload["render_params"]["background"] == {
+            "type": "linear_gradient",
+            "from": "#1d4ed8",
+            "to": "#7c3aed",
+            "angle": 0,
+        }
+
     def test_normalize_image_spec_supports_google_font_provider(self):
         normalized = normalize_image_spec(
             ImageSpec.model_validate(
