@@ -5,9 +5,11 @@ import json
 import pytest
 from django.contrib.auth.models import User
 from PIL import Image
+from pydantic import ValidationError
 
 from agent_images.services import ImageSpec, normalize_image_spec, render_image
 from core.image_styles import _safe_truncate, generate_job_clean_image
+from core.image_utils import load_font
 
 
 def _tiny_png_buffer():
@@ -116,6 +118,39 @@ class TestAgentImageService:
         assert normalized.safe_render_params["image_url"] == "https://example.com/logo.png"
         assert "profile_id" not in normalized.safe_render_params
 
+    def test_normalize_image_spec_supports_google_font_provider(self):
+        normalized = normalize_image_spec(
+            ImageSpec(
+                style="base",
+                font="google:Playfair Display",
+                title="Provider fonts",
+            )
+        )
+
+        assert normalized.spec["font"] == "google:playfair-display"
+        assert normalized.safe_render_params["font"] == "google:playfair-display"
+        assert normalized.warnings == [
+            "Provider fonts are fetched from the third-party provider on first render and cached locally."
+        ]
+
+    def test_image_spec_rejects_unknown_font_provider(self):
+        with pytest.raises(ValidationError) as exc:
+            ImageSpec(style="base", font="adobe:source-sans-3", title="Unknown provider")
+
+        assert "Unsupported font provider 'adobe'" in str(exc.value)
+
+    def test_image_spec_rejects_unknown_google_font_family(self):
+        with pytest.raises(ValidationError) as exc:
+            ImageSpec(style="base", font="google:noto-color-emoji", title="Unknown family")
+
+        assert "Unknown Google Font family 'noto-color-emoji'" in str(exc.value)
+
+    def test_image_spec_rejects_malformed_google_font_slug(self):
+        with pytest.raises(ValidationError) as exc:
+            ImageSpec(style="base", font="google:inter-", title="Malformed family")
+
+        assert "Provider font families may contain only lowercase letters" in str(exc.value)
+
     def test_render_image_supports_png_and_jpeg_content_types(self):
         png_payload = render_image(
             ImageSpec(style="base", site="x", title="Format Test", subtitle="Content types", format="png")
@@ -182,3 +217,84 @@ def test_job_clean_template_handles_long_copy_without_errors():
     )
 
     assert image.getbuffer().nbytes > 0
+
+
+def test_google_font_provider_loader_downloads_and_caches_font(settings, tmp_path, monkeypatch):
+    import core.font_providers as font_providers
+
+    settings.OSIG_FONT_CACHE_DIR = str(tmp_path)
+    font_bytes = (settings.BASE_DIR / "fonts" / "markerfelt.ttc").read_bytes()
+    requested_urls = []
+
+    class FakeResponse:
+        def __init__(self, *, text="", content=b""):
+            self.text = text
+            self.content = content
+
+        def raise_for_status(self):
+            return None
+
+        def iter_content(self, chunk_size=65536):
+            for index in range(0, len(self.content), chunk_size):
+                yield self.content[index : index + chunk_size]
+
+    def fake_get(url, *args, **kwargs):
+        requested_urls.append(url)
+        if url.startswith("https://fonts.googleapis.com/"):
+            return FakeResponse(
+                text=(
+                    "@font-face {"
+                    "font-family: 'Inter';"
+                    "src: url(https://fonts.gstatic.com/s/inter/v1/inter.ttf) format('truetype');"
+                    "unicode-range: U+0000-00FF;"
+                    "}"
+                )
+            )
+        if url.startswith("https://fonts.gstatic.com/"):
+            return FakeResponse(content=font_bytes)
+        raise AssertionError(f"Unexpected URL: {url}")
+
+    monkeypatch.setattr(font_providers.requests, "get", fake_get)
+
+    first = load_font("google:Inter", 24)
+    second = load_font("google:inter", 28)
+
+    assert first.getbbox("OSIG")
+    assert second.getbbox("OSIG")
+    assert (tmp_path / "google-inter.ttf").exists()
+    assert requested_urls == [
+        "https://fonts.googleapis.com/css2?family=Inter:wght@400&display=swap",
+        "https://fonts.gstatic.com/s/inter/v1/inter.ttf",
+    ]
+
+
+def test_google_font_provider_requires_basic_latin_font_url():
+    from core.font_providers import FontProviderError, _extract_font_url
+
+    css = (
+        "@font-face {"
+        "font-family: 'Inter';"
+        "src: url(https://fonts.gstatic.com/s/inter/v1/inter-cyrillic.ttf) format('truetype');"
+        "unicode-range: U+0400-04FF;"
+        "}"
+    )
+
+    with pytest.raises(FontProviderError) as exc:
+        _extract_font_url(css)
+
+    assert "Basic Latin" in str(exc.value)
+
+
+def test_provider_font_load_errors_are_not_silently_swallowed(monkeypatch):
+    import core.image_utils as image_utils
+    from core.font_providers import FontProviderError
+
+    def unavailable_provider_font_path(font):
+        raise FontProviderError("Google Fonts unavailable")
+
+    monkeypatch.setattr(image_utils, "provider_font_path", unavailable_provider_font_path)
+
+    with pytest.raises(FontProviderError) as exc:
+        image_utils.load_font("google:inter", 24)
+
+    assert "Google Fonts unavailable" in str(exc.value)

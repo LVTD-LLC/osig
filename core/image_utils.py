@@ -5,6 +5,7 @@ import requests
 from django.conf import settings
 from PIL import Image, ImageFont
 
+from core.font_providers import is_provider_font, normalize_font_name, provider_font_path
 from osig.utils import get_osig_logger
 
 logger = get_osig_logger(__name__)
@@ -74,11 +75,18 @@ def draw_wrapped_text(
 
 
 def load_font(font, size):
+    provider_font_requested = is_provider_font(font)
     try:
-        font_path = os.path.join(settings.BASE_DIR, "fonts", f"{font}.ttc")
+        normalized_font = normalize_font_name(font)
+        if is_provider_font(normalized_font):
+            font_path = provider_font_path(normalized_font)
+        else:
+            font_path = os.path.join(settings.BASE_DIR, "fonts", f"{normalized_font}.ttc")
         return ImageFont.truetype(font_path, size)
     except Exception as e:
         logger.error("Error loading font", font=font, error=str(e))
+        if provider_font_requested:
+            raise
         return ImageFont.load_default().font_variant(size=size)
 
 

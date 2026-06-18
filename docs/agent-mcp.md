@@ -118,6 +118,20 @@ Admin render metrics are not exposed through the unauthenticated MCP server.
 7. Call `export_image` once the preview is ready.
 8. Save the returned bytes into the repository and point `og:image`, `twitter:image`, and schema image fields at that committed/static asset.
 
+## Fonts
+
+The `font` field accepts the bundled compatibility fonts `helvetica`, `markerfelt`, and `papyrus`.
+
+Agents can also use Google Fonts through the provider namespace:
+
+```json
+{
+  "font": "google:inter"
+}
+```
+
+Use hyphenated family slugs such as `google:roboto`, `google:open-sans`, `google:playfair-display`, `google:dm-sans`, or `google:space-grotesk`. Provider fonts are resolved through Google Fonts on first render and cached locally by the renderer.
+
 ## Serving Model
 
 OSIG serves MCP through FastMCP in two ways:

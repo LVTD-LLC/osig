@@ -10,6 +10,8 @@ The old public `/g` URL generator has been removed. Humans now use the Agent Ima
 4. Copy the repository payload or download the generated image.
 5. Commit the image into the target project and reference that asset in Open Graph and Twitter metadata.
 
+Fonts can be bundled ids such as `helvetica`, or Google Fonts provider values such as `google:inter`, `google:open-sans`, and `google:playfair-display`. Provider fonts are fetched on first render and cached locally.
+
 ## Output
 
 Studio renders return:
