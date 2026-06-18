@@ -1,0 +1,95 @@
+#!/usr/bin/env sh
+set -eu
+
+ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$ROOT_DIR"
+
+usage() {
+    cat <<'EOF'
+Usage: sh scripts/mcp-dev <command> [args]
+
+Commands:
+  list                 List local stdio MCP tools
+  call <tool> [args]   Call a local stdio MCP tool
+  inspect [args]       Inspect mcp_server.py with FastMCP
+  stdio                Run the local stdio MCP server
+  http                 Run the local HTTP MCP sidecar
+  migrate [args]       Run Django migrations for the native local database
+  test [args]          Run focused MCP tests
+
+When .env is missing, this script loads .env.example and overrides DATABASE_URL
+to sqlite:///db.sqlite3 for native local iteration outside Docker.
+EOF
+}
+
+load_env() {
+    has_env=0
+
+    if [ -f .env.example ]; then
+        set -a
+        # shellcheck disable=SC1091
+        . ./.env.example
+        set +a
+    fi
+
+    if [ -f .env ]; then
+        has_env=1
+        set -a
+        # shellcheck disable=SC1091
+        . ./.env
+        set +a
+    fi
+
+    if [ "$has_env" -eq 0 ]; then
+        DATABASE_URL="${OSIG_MCP_DATABASE_URL:-sqlite:///db.sqlite3}"
+        export DATABASE_URL
+    elif [ -z "${DATABASE_URL:-}" ]; then
+        DATABASE_URL="${OSIG_MCP_DATABASE_URL:-sqlite:///db.sqlite3}"
+        export DATABASE_URL
+    fi
+}
+
+command_name="${1:-help}"
+shift || true
+
+case "$command_name" in
+    list)
+        uv run fastmcp list --command "sh '$ROOT_DIR/scripts/mcp-dev' stdio"
+        ;;
+    call)
+        if [ "$#" -lt 1 ]; then
+            usage >&2
+            exit 2
+        fi
+        target="$1"
+        shift
+        uv run fastmcp call --command "sh '$ROOT_DIR/scripts/mcp-dev' stdio" --target "$target" "$@"
+        ;;
+    inspect)
+        load_env
+        uv run fastmcp inspect mcp_server.py "$@"
+        ;;
+    stdio)
+        load_env
+        exec uv run python mcp_server.py "$@"
+        ;;
+    http)
+        load_env
+        exec uv run python mcp_http_server.py "$@"
+        ;;
+    migrate)
+        load_env
+        uv run python manage.py migrate "$@"
+        ;;
+    test)
+        load_env
+        uv run pytest core/tests/test_mcp.py "$@"
+        ;;
+    help|--help|-h)
+        usage
+        ;;
+    *)
+        usage >&2
+        exit 2
+        ;;
+esac
