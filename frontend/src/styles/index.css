@@ -695,12 +695,16 @@
   }
 
   .landing-page::before {
-    inset: -5rem auto auto -8rem;
-    width: min(44vw, 36rem);
-    height: min(42vw, 34rem);
-    background: var(--landing-accent);
-    clip-path: polygon(0 0, 92% 10%, 74% 100%, 0 82%);
-    opacity: 0.9;
+    inset: -9rem auto auto -10rem;
+    width: min(36vw, 30rem);
+    height: min(30vw, 20rem);
+    background: linear-gradient(
+      135deg,
+      var(--landing-accent) 0%,
+      color-mix(in oklch, var(--landing-accent), var(--landing-warm) 18%) 100%
+    );
+    clip-path: polygon(0 0, 100% 0, 76% 88%, 0 70%);
+    opacity: 0.94;
   }
 
   .landing-page::after {
@@ -724,6 +728,8 @@
   }
 
   .landing-intro {
+    position: relative;
+    z-index: 1;
     max-width: 47rem;
   }
 
@@ -776,8 +782,8 @@
 
   .landing-output-stack {
     position: relative;
-    width: min(100%, 34rem);
-    min-height: clamp(12rem, 30vw, 18rem);
+    width: min(100%, 38rem);
+    min-height: clamp(13.5rem, 32vw, 20rem);
     margin-top: clamp(2rem, 5vw, 3.4rem);
   }
 
@@ -787,6 +793,7 @@
     border: 1px solid color-mix(in oklch, var(--landing-accent), var(--landing-bg) 58%);
     border-radius: 0.75rem;
     background: var(--landing-panel-deep);
+    box-shadow: 0 1.4rem 3.2rem color-mix(in oklch, black, transparent 62%);
   }
 
   .landing-output img {
@@ -799,7 +806,7 @@
     top: 0;
     left: 0;
     z-index: 2;
-    width: min(82%, 28rem);
+    width: min(86%, 31rem);
     animation: landing-float 8s ease-in-out infinite;
   }
 
@@ -807,9 +814,9 @@
     right: 0;
     bottom: 0;
     z-index: 1;
-    width: min(58%, 21rem);
-    transform: rotate(4deg);
-    opacity: 0.72;
+    width: min(62%, 23rem);
+    transform: translateY(0.35rem) rotate(4deg);
+    opacity: 0.86;
   }
 
   .landing-prompt {
@@ -1026,6 +1033,7 @@
   }
 
   .landing-render-frame {
+    aspect-ratio: 16 / 9;
     overflow: hidden;
   }
 
@@ -1107,6 +1115,19 @@
 
   .landing-benefit-main {
     grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 767px) {
+  .landing-page::before {
+    inset: -7.5rem auto auto -8rem;
+    width: 21rem;
+    height: 15rem;
+    opacity: 0.82;
+  }
+
+  .landing-output-stack {
+    min-height: clamp(13rem, 55vw, 17rem);
   }
 }
 
