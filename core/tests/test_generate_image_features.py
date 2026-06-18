@@ -240,6 +240,27 @@ class TestAgentImageService:
 
         assert "Image URLs must use HTTPS" in str(exc.value)
 
+    def test_image_spec_rejects_private_image_url_hosts(self):
+        with pytest.raises(ValidationError) as exc:
+            ImageSpec.model_validate(
+                {
+                    "width": 300,
+                    "height": 220,
+                    "layers": [
+                        {
+                            "kind": "image",
+                            "x": 20,
+                            "y": 20,
+                            "width": 120,
+                            "height": 80,
+                            "src": {"type": "url", "url": "https://127.0.0.1/image.png"},
+                        }
+                    ],
+                }
+            )
+
+        assert "Image URL host must resolve to public IP addresses" in str(exc.value)
+
     def test_normalize_image_spec_warns_when_text_is_clamped(self):
         normalized = normalize_image_spec(
             ImageSpec.model_validate(
@@ -263,6 +284,29 @@ class TestAgentImageService:
         )
 
         assert "Layer 0 text may be clamped inside its 90x34 box." in normalized.warnings
+
+    def test_normalize_image_spec_warns_when_wrapped_text_extends_below_canvas(self):
+        normalized = normalize_image_spec(
+            ImageSpec.model_validate(
+                {
+                    "width": 300,
+                    "height": 220,
+                    "layers": [
+                        {
+                            "kind": "text",
+                            "x": 20,
+                            "y": 180,
+                            "width": 90,
+                            "text": "This wrapped text should run below the canvas edge",
+                            "font_size": 24,
+                            "line_height": 28,
+                        }
+                    ],
+                }
+            )
+        )
+
+        assert "Layer 0 extends outside the 300x220 canvas and will be clipped." in normalized.warnings
 
     def test_render_image_supports_png_and_jpeg_content_types(self):
         png_payload = render_image(ImageSpec.model_validate({**_canvas_spec(), "format": "png"}))
@@ -291,6 +335,8 @@ class TestAgentImageService:
 
         class FakeResponse:
             content = image_buffer.getvalue()
+            headers = {}
+            is_redirect = False
 
             def raise_for_status(self):
                 return None
@@ -318,6 +364,24 @@ class TestAgentImageService:
 
         assert payload["content_type"] == "image/png"
         assert payload["byte_size"] > 0
+
+    def test_canvas_image_layer_revalidates_redirect_hosts(self, monkeypatch):
+        import core.image_styles as image_styles
+
+        class FakeResponse:
+            content = b""
+            headers = {"Location": "https://127.0.0.1/private.png"}
+            is_redirect = True
+
+            def raise_for_status(self):
+                return None
+
+        monkeypatch.setattr(image_styles.requests, "get", lambda *args, **kwargs: FakeResponse())
+
+        with pytest.raises(ValueError) as exc:
+            image_styles._load_remote_image("https://93.184.216.34/red.png")
+
+        assert "Image URL host must resolve to public IP addresses" in str(exc.value)
 
     def test_canvas_image_layer_supports_inline_base64_assets(self):
         payload = render_image(

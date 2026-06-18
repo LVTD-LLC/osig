@@ -7,7 +7,6 @@ import io
 from dataclasses import dataclass
 from time import perf_counter
 from typing import Annotated, Any, Literal
-from urllib.parse import urlparse
 
 from django.conf import settings
 from django.db import close_old_connections
@@ -22,6 +21,7 @@ from core.font_providers import (
     normalize_font_name,
 )
 from core.image_styles import parse_color, render_canvas_image
+from core.image_url_safety import validate_remote_image_url
 from core.image_utils import get_image_dimensions
 from core.models import Profile
 from core.render_observability import classify_render_error, is_transient_error, record_render_attempt
@@ -117,17 +117,12 @@ class UrlImageSource(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     type: Literal["url"]
-    url: Annotated[str, Field(min_length=1, max_length=2000, description="HTTPS image URL.")]
+    url: Annotated[str, Field(min_length=1, max_length=2000, description="Public HTTPS image URL.")]
 
     @field_validator("url")
     @classmethod
-    def validate_https_url(cls, value: str) -> str:
-        parsed = urlparse(value)
-        if parsed.scheme != "https":
-            raise ValueError("Image URLs must use HTTPS.")
-        if not parsed.netloc:
-            raise ValueError("Image URLs must include a host.")
-        return value
+    def validate_public_https_url(cls, value: str) -> str:
+        return validate_remote_image_url(value, resolve=False)
 
 
 class Base64ImageSource(BaseModel):
@@ -351,15 +346,31 @@ def _layer_dump(layer: CanvasLayer) -> dict[str, Any]:
 
 def _layer_bounds(layer: CanvasLayer) -> tuple[int, int, int, int] | None:
     if isinstance(layer, TextLayer):
-        width = layer.width
-        if width is None:
-            return None
-        height = layer.height or layer.line_height or round(layer.font_size * 1.2)
+        width = layer.width or _estimate_text_width(layer)
+        height = layer.height or _estimate_text_height(layer)
     else:
         width = layer.width
         height = layer.height
 
     return layer.x, layer.y, layer.x + width, layer.y + height
+
+
+def _estimate_text_width(layer: TextLayer) -> int:
+    if layer.width is not None:
+        return layer.width
+
+    average_character_width = max(1, round(layer.font_size * 0.55))
+    lines = layer.text.splitlines() or [layer.text]
+    longest_line = max(len(line) for line in lines)
+    return min(MAX_LAYER_EDGE, max(1, longest_line * average_character_width))
+
+
+def _estimate_text_height(layer: TextLayer) -> int:
+    if layer.height is not None:
+        return layer.height
+
+    line_height = layer.line_height or round(layer.font_size * 1.2)
+    return _estimate_text_lines(layer) * line_height
 
 
 def _estimate_text_lines(layer: TextLayer) -> int:
@@ -472,7 +483,7 @@ def image_contract() -> dict[str, Any]:
             "linear_gradient": {"required": ["type", "from", "to"], "optional": ["angle"]},
         },
         "image_sources": {
-            "url": "HTTPS image URL.",
+            "url": "Public HTTPS image URL. Private, loopback, link-local, and credentialed URLs are rejected.",
             "base64": "Inline base64 image bytes with media_type image/png, image/jpeg, or image/webp.",
         },
         "choices": {

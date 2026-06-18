@@ -3,12 +3,13 @@ from __future__ import annotations
 import io
 import re
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urljoin
 
 import requests
 from django.conf import settings
 from PIL import Image, ImageColor, ImageDraw, ImageFilter
 
+from core.image_url_safety import validate_remote_image_url
 from core.image_utils import add_watermark, create_image_buffer, load_font
 from core.utils import check_if_profile_has_pro_subscription
 from osig.utils import get_osig_logger
@@ -64,13 +65,23 @@ def _composite_clipped(base: Image.Image, overlay: Image.Image, x: int, y: int) 
 
 
 def _load_remote_image(url: str) -> Image.Image:
-    parsed = urlparse(url)
-    if parsed.scheme != "https":
-        raise ValueError("Image URLs must use HTTPS.")
+    current_url = validate_remote_image_url(url, resolve=True)
     timeout_seconds = getattr(settings, "OSIG_IMAGE_FETCH_TIMEOUT_SECONDS", 8)
-    response = requests.get(url, timeout=timeout_seconds)
-    response.raise_for_status()
-    return Image.open(io.BytesIO(response.content)).convert("RGBA")
+    max_redirects = getattr(settings, "OSIG_IMAGE_FETCH_MAX_REDIRECTS", 3)
+
+    for _ in range(max_redirects + 1):
+        response = requests.get(current_url, timeout=timeout_seconds, allow_redirects=False)
+        if response.is_redirect:
+            redirect_url = response.headers.get("Location")
+            if not redirect_url:
+                raise ValueError("Image URL redirect is missing a Location header.")
+            current_url = validate_remote_image_url(urljoin(current_url, redirect_url), resolve=True)
+            continue
+
+        response.raise_for_status()
+        return Image.open(io.BytesIO(response.content)).convert("RGBA")
+
+    raise ValueError("Image URL redirected too many times.")
 
 
 def _load_inline_image(source: dict[str, Any]) -> Image.Image:
