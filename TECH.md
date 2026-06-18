@@ -69,9 +69,9 @@ The current rendering contract is a canvas scene:
 
 - `background`: a canvas color.
 - `layers`: ordered paint layers. Later layers draw on top of earlier layers.
-- `rect` layers: pixel-positioned color rectangles with optional opacity and radius.
-- `text` layers: pixel-positioned copy with font, size, color, wrapping width, line height, alignment, opacity, and optional stroke.
-- `image` layers: pixel-positioned remote image boxes with `cover`, `contain`, or `stretch` fit.
+- `rect` layers: pixel-positioned shape layers with solid or linear-gradient fill, optional opacity, radius, border, and shadow.
+- `text` layers: pixel-positioned copy with font, size, color, wrapping width, optional height, line height, horizontal/vertical alignment, opacity, clamp overflow, and optional stroke.
+- `image` layers: pixel-positioned HTTPS or inline-base64 image boxes with `cover`, `contain`, `fill`, or `none` fit and optional radius.
 
 Current font support includes bundled fonts plus provider-backed fonts:
 

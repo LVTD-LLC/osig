@@ -141,19 +141,28 @@ Use `site` for a social preset or provide custom `width` and `height` values bet
       "y": 40,
       "width": 720,
       "height": 370,
-      "color": "#1d4ed8",
-      "radius": 24
+      "fill": {
+        "type": "linear_gradient",
+        "from": "#1d4ed8",
+        "to": "#7c3aed",
+        "angle": 0
+      },
+      "radius": 24,
+      "border": { "color": "rgba(255,255,255,0.22)", "width": 2 },
+      "shadow": { "x": 0, "y": 14, "blur": 28, "color": "rgba(0,0,0,0.35)" }
     },
     {
       "kind": "text",
       "x": 80,
       "y": 110,
       "width": 620,
+      "height": 150,
       "text": "Ship deterministic images from code.",
       "font": "google:inter",
       "font_size": 52,
       "color": "#ffffff",
-      "line_height": 62
+      "line_height": 62,
+      "overflow": "clamp"
     },
     {
       "kind": "image",
@@ -161,7 +170,7 @@ Use `site` for a social preset or provide custom `width` and `height` values bet
       "y": 250,
       "width": 160,
       "height": 120,
-      "url": "https://example.com/logo.png",
+      "src": { "type": "url", "url": "https://example.com/logo.png" },
       "fit": "contain"
     }
   ],
@@ -170,6 +179,28 @@ Use `site` for a social preset or provide custom `width` and `height` values bet
 ```
 
 Layer order is paint order. Later layers draw on top of earlier layers. Pixel coordinates use the top-left corner as origin.
+
+Rectangle and background fills can be solid colors such as `#0f172a` or `rgba(15,23,42,0.92)`, or linear gradients:
+
+```json
+{ "type": "linear_gradient", "from": "#1d4ed8", "to": "#7c3aed", "angle": 0 }
+```
+
+Image layers accept HTTPS URLs or bounded inline base64 payloads:
+
+```json
+{
+  "kind": "image",
+  "x": 40,
+  "y": 40,
+  "width": 160,
+  "height": 160,
+  "src": { "type": "base64", "media_type": "image/png", "data": "..." },
+  "fit": "cover"
+}
+```
+
+Supported image fits are `cover`, `contain`, `fill`, and `none`.
 
 ## Fonts
 

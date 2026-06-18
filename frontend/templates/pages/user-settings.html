@@ -81,7 +81,7 @@
 
     <section class="panel mt-6 p-5">
       <h2 class="text-lg font-bold">API token</h2>
-      <p class="mt-2 text-sm leading-6 text-[var(--osig-muted)]">Use this token as the <span class="font-mono">key</span> parameter for authenticated image URLs.</p>
+      <p class="mt-2 text-sm leading-6 text-[var(--osig-muted)]">Use this token as the <span class="font-mono">key</span> value for hosted MCP and Studio API quota and watermark state.</p>
       <div class="mt-5 flex flex-col gap-3 sm:flex-row">
         <input type="text" id="user-token" value="{{ object.key }}" readonly class="field font-mono text-sm">
         <button onclick="copyToken()" class="btn-secondary sm:w-32" type="button">

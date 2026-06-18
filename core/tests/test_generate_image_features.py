@@ -18,13 +18,23 @@ def _tiny_png_buffer():
     return buffer
 
 
+def _tiny_png_base64(color="red"):
+    buffer = io.BytesIO()
+    Image.new("RGB", (12, 12), color=color).save(buffer, format="PNG")
+    return base64.b64encode(buffer.getvalue()).decode("ascii")
+
+
+def _decode_response_image(payload):
+    return Image.open(io.BytesIO(base64.b64decode(payload["image_base64"]))).convert("RGB")
+
+
 def _canvas_spec(**overrides):
     spec = {
         "width": 800,
         "height": 450,
         "background": "#f8fafc",
         "layers": [
-            {"kind": "rect", "x": 40, "y": 40, "width": 720, "height": 370, "color": "#2563eb", "radius": 28},
+            {"kind": "rect", "x": 40, "y": 40, "width": 720, "height": 370, "fill": "#2563eb", "radius": 28},
             {
                 "kind": "text",
                 "x": 80,
@@ -209,6 +219,51 @@ class TestAgentImageService:
 
         assert "Invalid color value" in str(exc.value)
 
+    def test_image_spec_rejects_non_https_image_urls(self):
+        with pytest.raises(ValidationError) as exc:
+            ImageSpec.model_validate(
+                {
+                    "width": 300,
+                    "height": 220,
+                    "layers": [
+                        {
+                            "kind": "image",
+                            "x": 20,
+                            "y": 20,
+                            "width": 120,
+                            "height": 80,
+                            "src": {"type": "url", "url": "http://example.com/image.png"},
+                        }
+                    ],
+                }
+            )
+
+        assert "Image URLs must use HTTPS" in str(exc.value)
+
+    def test_normalize_image_spec_warns_when_text_is_clamped(self):
+        normalized = normalize_image_spec(
+            ImageSpec.model_validate(
+                {
+                    "width": 300,
+                    "height": 220,
+                    "layers": [
+                        {
+                            "kind": "text",
+                            "x": 20,
+                            "y": 20,
+                            "width": 90,
+                            "height": 34,
+                            "text": "This is intentionally too long to fit into a tiny text box",
+                            "font_size": 24,
+                            "line_height": 28,
+                        }
+                    ],
+                }
+            )
+        )
+
+        assert "Layer 0 text may be clamped inside its 90x34 box." in normalized.warnings
+
     def test_render_image_supports_png_and_jpeg_content_types(self):
         png_payload = render_image(ImageSpec.model_validate({**_canvas_spec(), "format": "png"}))
         jpeg_payload = render_image(ImageSpec.model_validate({**_canvas_spec(), "format": "jpeg", "quality": 70}))
@@ -254,7 +309,7 @@ class TestAgentImageService:
                             "y": 20,
                             "width": 120,
                             "height": 80,
-                            "url": "https://example.com/red.png",
+                            "src": {"type": "url", "url": "https://example.com/red.png"},
                         }
                     ],
                 }
@@ -263,6 +318,73 @@ class TestAgentImageService:
 
         assert payload["content_type"] == "image/png"
         assert payload["byte_size"] > 0
+
+    def test_canvas_image_layer_supports_inline_base64_assets(self):
+        payload = render_image(
+            ImageSpec.model_validate(
+                {
+                    "width": 300,
+                    "height": 220,
+                    "layers": [
+                        {
+                            "kind": "image",
+                            "x": 20,
+                            "y": 20,
+                            "width": 80,
+                            "height": 80,
+                            "src": {"type": "base64", "media_type": "image/png", "data": _tiny_png_base64("green")},
+                            "fit": "fill",
+                            "radius": 12,
+                        }
+                    ],
+                }
+            )
+        )
+
+        image = _decode_response_image(payload)
+
+        assert payload["content_type"] == "image/png"
+        assert image.getpixel((60, 60))[1] > 100
+
+    def test_canvas_rect_layer_supports_gradient_border_and_shadow(self):
+        payload = render_image(
+            ImageSpec.model_validate(
+                {
+                    "width": 320,
+                    "height": 220,
+                    "background": "#ffffff",
+                    "layers": [
+                        {
+                            "kind": "rect",
+                            "x": 30,
+                            "y": 30,
+                            "width": 180,
+                            "height": 100,
+                            "fill": {
+                                "type": "linear_gradient",
+                                "from": "#ff0000",
+                                "to": "#0000ff",
+                                "angle": 0,
+                            },
+                            "radius": 8,
+                            "border": {"color": "#000000", "width": 4},
+                            "shadow": {"x": 10, "y": 12, "blur": 8, "color": "rgba(0,0,0,0.40)"},
+                        }
+                    ],
+                }
+            )
+        )
+
+        image = _decode_response_image(payload)
+        left_fill = image.getpixel((45, 80))
+        right_fill = image.getpixel((195, 80))
+        border = image.getpixel((32, 80))
+        shadow = image.getpixel((220, 140))
+
+        assert left_fill[0] > left_fill[2]
+        assert right_fill[2] > right_fill[0]
+        assert max(border) < 20
+        assert shadow != (255, 255, 255)
 
 
 def test_google_font_provider_loader_downloads_and_caches_font(settings, tmp_path, monkeypatch):

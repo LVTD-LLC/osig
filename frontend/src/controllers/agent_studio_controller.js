@@ -89,7 +89,7 @@ export default class extends Controller {
     this.previewTarget.innerHTML = `
       <div class="px-6 text-center">
         <p class="font-semibold text-[var(--osig-danger)]">${this.escapeHtml(message)}</p>
-        <p class="mt-2 text-sm text-[var(--osig-muted)]">Adjust the spec or image URL, then render again.</p>
+        <p class="mt-2 text-sm text-[var(--osig-muted)]">Adjust the spec or image source, then render again.</p>
       </div>
     `;
     this.renderWarnings(error?.details ? [JSON.stringify(error.details)] : []);

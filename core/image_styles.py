@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import io
+import re
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 from django.conf import settings
-from PIL import Image, ImageColor, ImageDraw
+from PIL import Image, ImageColor, ImageDraw, ImageFilter
 
 from core.image_utils import add_watermark, create_image_buffer, load_font
 from core.utils import check_if_profile_has_pro_subscription
@@ -13,9 +15,27 @@ from osig.utils import get_osig_logger
 
 logger = get_osig_logger(__name__)
 
+RGBA_RE = re.compile(
+    r"^rgba?\(\s*(?P<red>\d{1,3})\s*,\s*(?P<green>\d{1,3})\s*,\s*(?P<blue>\d{1,3})(?:\s*,\s*(?P<alpha>[0-9.]+)\s*)?\)$",
+    re.IGNORECASE,
+)
+
 
 def parse_color(color: str, opacity: float = 1.0) -> tuple[int, int, int, int]:
-    rgba = ImageColor.getcolor(color, "RGBA")
+    match = RGBA_RE.match(color)
+    if match:
+        red = max(0, min(255, int(match.group("red"))))
+        green = max(0, min(255, int(match.group("green"))))
+        blue = max(0, min(255, int(match.group("blue"))))
+        alpha_value = match.group("alpha")
+        if alpha_value is None:
+            alpha = 255
+        else:
+            alpha_float = float(alpha_value)
+            alpha = round((alpha_float if alpha_float <= 1 else alpha_float / 255) * 255)
+        rgba = (red, green, blue, max(0, min(255, alpha)))
+    else:
+        rgba = ImageColor.getcolor(color, "RGBA")
     alpha = max(0, min(255, round(rgba[3] * opacity)))
     return rgba[0], rgba[1], rgba[2], alpha
 
@@ -44,15 +64,38 @@ def _composite_clipped(base: Image.Image, overlay: Image.Image, x: int, y: int) 
 
 
 def _load_remote_image(url: str) -> Image.Image:
+    parsed = urlparse(url)
+    if parsed.scheme != "https":
+        raise ValueError("Image URLs must use HTTPS.")
     timeout_seconds = getattr(settings, "OSIG_IMAGE_FETCH_TIMEOUT_SECONDS", 8)
     response = requests.get(url, timeout=timeout_seconds)
     response.raise_for_status()
     return Image.open(io.BytesIO(response.content)).convert("RGBA")
 
 
+def _load_inline_image(source: dict[str, Any]) -> Image.Image:
+    import base64
+
+    payload = base64.b64decode(source["data"], validate=True)
+    return Image.open(io.BytesIO(payload)).convert("RGBA")
+
+
+def _load_source_image(source: dict[str, Any]) -> Image.Image:
+    if source["type"] == "url":
+        return _load_remote_image(source["url"])
+    if source["type"] == "base64":
+        return _load_inline_image(source)
+    raise ValueError(f"Unsupported image source type: {source['type']}")
+
+
 def _resize_image(image: Image.Image, width: int, height: int, fit: str) -> Image.Image:
-    if fit == "stretch":
+    if fit == "fill":
         return image.resize((width, height), Image.LANCZOS)
+
+    if fit == "none":
+        layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        layer.alpha_composite(image.crop((0, 0, min(width, image.width), min(height, image.height))), (0, 0))
+        return layer
 
     scale = (
         min(width / image.width, height / image.height)
@@ -73,23 +116,109 @@ def _resize_image(image: Image.Image, width: int, height: int, fit: str) -> Imag
     return resized.crop((left, top, left + width, top + height))
 
 
+def _rounded_mask(width: int, height: int, radius: int) -> Image.Image:
+    mask = Image.new("L", (width, height), 0)
+    draw = ImageDraw.Draw(mask)
+    box = (0, 0, width, height)
+    if radius:
+        draw.rounded_rectangle(box, radius=radius, fill=255)
+    else:
+        draw.rectangle(box, fill=255)
+    return mask
+
+
+def _apply_radius(image: Image.Image, radius: int) -> Image.Image:
+    if not radius:
+        return image
+    rounded = image.copy()
+    rounded.putalpha(
+        Image.composite(rounded.getchannel("A"), Image.new("L", image.size, 0), _rounded_mask(*image.size, radius))
+    )
+    return rounded
+
+
+def _linear_gradient(size: tuple[int, int], fill: dict[str, Any], opacity: float) -> Image.Image:
+    width, height = size
+    start = parse_color(fill["from"], opacity)
+    end = parse_color(fill["to"], opacity)
+
+    if width == 1:
+        mask = Image.linear_gradient("L").resize((1, height))
+    else:
+        mask = Image.linear_gradient("L").rotate(90, expand=True).resize((width, height))
+
+    angle = int(fill.get("angle", 0)) % 360
+    if angle:
+        rotated = mask.resize((max(width, height) * 2, max(width, height) * 2))
+        rotated = rotated.rotate(-angle, resample=Image.Resampling.BICUBIC, expand=False)
+        left = (rotated.width - width) // 2
+        top = (rotated.height - height) // 2
+        mask = rotated.crop((left, top, left + width, top + height))
+
+    return Image.composite(Image.new("RGBA", size, end), Image.new("RGBA", size, start), mask)
+
+
+def _fill_image(size: tuple[int, int], fill: str | dict[str, Any], opacity: float = 1.0) -> Image.Image:
+    if isinstance(fill, dict):
+        if fill.get("type") == "linear_gradient":
+            return _linear_gradient(size, fill, opacity)
+        raise ValueError(f"Unsupported fill type: {fill.get('type')}")
+
+    return Image.new("RGBA", size, parse_color(fill, opacity))
+
+
+def _draw_shadow(img: Image.Image, layer: dict[str, Any], radius: int) -> None:
+    shadow = layer.get("shadow")
+    if not shadow:
+        return
+
+    x = int(layer["x"]) + int(shadow.get("x", 0))
+    y = int(layer["y"]) + int(shadow.get("y", 0))
+    width = int(layer["width"])
+    height = int(layer["height"])
+    blur = int(shadow.get("blur", 0))
+    color = parse_color(shadow.get("color", "rgba(0,0,0,0.35)"), float(layer.get("opacity", 1)))
+    padding = blur * 2
+    shadow_layer = Image.new("RGBA", (width + padding * 2, height + padding * 2), (0, 0, 0, 0))
+    shape = Image.new("RGBA", (width, height), color)
+    shape.putalpha(_rounded_mask(width, height, radius).point(lambda value: round(value * (color[3] / 255))))
+    shadow_layer.alpha_composite(shape, (padding, padding))
+    if blur:
+        shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(blur))
+    _composite_clipped(img, shadow_layer, x - padding, y - padding)
+
+
 def _draw_rect(img: Image.Image, layer: dict[str, Any]) -> None:
-    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
     x = int(layer["x"])
     y = int(layer["y"])
     width = int(layer["width"])
     height = int(layer["height"])
     radius = int(layer.get("radius") or 0)
-    fill = parse_color(layer["color"], float(layer.get("opacity", 1)))
-    box = [x, y, x + width, y + height]
+    opacity = float(layer.get("opacity", 1))
 
+    _draw_shadow(img, layer, radius)
+
+    rect = _fill_image((width, height), layer.get("fill", "#000000"), opacity)
     if radius:
-        draw.rounded_rectangle(box, radius=radius, fill=fill)
-    else:
-        draw.rectangle(box, fill=fill)
+        rect.putalpha(
+            Image.composite(rect.getchannel("A"), Image.new("L", rect.size, 0), _rounded_mask(width, height, radius))
+        )
 
-    img.alpha_composite(overlay)
+    _composite_clipped(img, rect, x, y)
+
+    border = layer.get("border")
+    if border:
+        border_width = int(border.get("width", 1))
+        border_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(border_layer)
+        inset = max(0, border_width // 2)
+        box = [inset, inset, max(inset, width - inset - 1), max(inset, height - inset - 1)]
+        outline = parse_color(border.get("color", "#000000"), opacity)
+        if radius:
+            draw.rounded_rectangle(box, radius=max(0, radius - inset), outline=outline, width=border_width)
+        else:
+            draw.rectangle(box, outline=outline, width=border_width)
+        _composite_clipped(img, border_layer, x, y)
 
 
 def _line_width(font, text: str) -> int:
@@ -137,16 +266,33 @@ def _draw_text(img: Image.Image, layer: dict[str, Any]) -> None:
     y = int(layer["y"])
     block_width = layer.get("width")
     max_width = int(block_width) if block_width else None
+    block_height = int(layer["height"]) if layer.get("height") else None
     line_height = int(layer.get("line_height") or round(font_size * 1.2))
     align = layer.get("align", "left")
+    valign = layer.get("valign", "top")
     fill = parse_color(layer["color"], float(layer.get("opacity", 1)))
     stroke_color = layer.get("stroke_color")
     stroke_fill = parse_color(stroke_color, float(layer.get("opacity", 1))) if stroke_color else None
     stroke_width = int(layer.get("stroke_width") or 0)
 
     draw = ImageDraw.Draw(img)
-    current_y = y
-    for line in _wrap_text(layer["text"], font, max_width):
+    lines = _wrap_text(layer["text"], font, max_width)
+    if block_height:
+        max_lines = max(1, block_height // line_height)
+        lines = lines[:max_lines]
+        total_height = len(lines) * line_height
+        if valign == "middle":
+            current_y = y + max(0, (block_height - total_height) // 2)
+        elif valign == "bottom":
+            current_y = y + max(0, block_height - total_height)
+        else:
+            current_y = y
+    else:
+        current_y = y
+
+    for line in lines:
+        if block_height and current_y + line_height > y + block_height:
+            break
         line_x = x
         if max_width and align != "left":
             line_width = _line_width(font, line)
@@ -167,8 +313,13 @@ def _draw_text(img: Image.Image, layer: dict[str, Any]) -> None:
 
 
 def _draw_image(img: Image.Image, layer: dict[str, Any]) -> None:
-    remote = _load_remote_image(layer["url"])
+    source = layer.get("src")
+    if source is None:
+        raise ValueError("Image layer requires src.")
+
+    remote = _load_source_image(source)
     resized = _resize_image(remote, int(layer["width"]), int(layer["height"]), layer.get("fit", "cover"))
+    resized = _apply_radius(resized, int(layer.get("radius") or 0))
     resized = _apply_opacity(resized, float(layer.get("opacity", 1)))
     _composite_clipped(img, resized, int(layer["x"]), int(layer["y"]))
 
@@ -176,7 +327,7 @@ def _draw_image(img: Image.Image, layer: dict[str, Any]) -> None:
 def render_canvas_image(image_data: dict[str, Any]):
     width = int(image_data["width"])
     height = int(image_data["height"])
-    img = Image.new("RGBA", (width, height), parse_color(image_data.get("background", "#ffffff")))
+    img = _fill_image((width, height), image_data.get("background", "#ffffff"))
 
     logger.info(
         "Generating canvas image",

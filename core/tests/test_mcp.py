@@ -26,7 +26,7 @@ def _canvas_spec(**overrides):
         "height": 450,
         "background": "#0f172a",
         "layers": [
-            {"kind": "rect", "x": 40, "y": 40, "width": 720, "height": 370, "color": "#1d4ed8", "radius": 24},
+            {"kind": "rect", "x": 40, "y": 40, "width": 720, "height": 370, "fill": "#1d4ed8", "radius": 24},
             {
                 "kind": "text",
                 "x": 80,
@@ -79,8 +79,16 @@ def test_get_image_contract_describes_canvas_workflow():
     assert result.data["purpose"] == "Deterministic canvas images for AI agents."
     assert result.data["canvas"]["default_site"] == "x"
     assert result.data["canvas"]["custom_dimensions"]["max_width"] == 2000
+    assert result.data["canvas"]["custom_dimensions"]["max_pixels"] == 2500000
     assert set(result.data["layer_kinds"]) == {"rect", "text", "image"}
+    assert {"fill", "border", "shadow"}.issubset(result.data["layer_kinds"]["rect"]["optional"])
+    assert {"height", "valign", "overflow"}.issubset(result.data["layer_kinds"]["text"]["optional"])
+    assert "src" in result.data["layer_kinds"]["image"]["required"]
+    assert "base64" in result.data["image_sources"]
+    assert result.data["fill_models"]["linear_gradient"]["required"] == ["type", "from", "to"]
     assert "style" not in result.data["choices"]
+    assert {"cover", "contain", "fill", "none"} == set(result.data["choices"]["image_fit"])
+    assert "stretch" not in result.data["choices"]["image_fit"]
     assert "google" in result.data["choices"]["font_provider"]
     assert "google:inter" in result.data["choices"]["font"]
     assert result.data["font_providers"]["google"]["font_value_format"] == "google:<family-slug>"

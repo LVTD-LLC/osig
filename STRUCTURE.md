@@ -28,7 +28,7 @@
 - `core/image_utils.py`: dimensions, font loading, image fetching, output encoding, watermark helper.
 - `core/views.py`: public pages, account settings, billing redirects, and utility image views.
 - `core/api/views.py`: blog submission and render metrics.
-- `core/models.py`: profiles, usage, generated images, render attempts, blog posts.
+- `core/models.py`: profiles, usage, render attempts, blog posts.
 - `core/usage.py`: per-profile usage metering and quota enforcement.
 - `core/render_observability.py`: render error taxonomy, retry classification, aggregate metrics.
 - `core/signing.py`: legacy signing helpers retained for now, not used by the current agent-first flow.

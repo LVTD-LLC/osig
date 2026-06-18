@@ -6,7 +6,7 @@ This file is the vendor-neutral operating manual for AI coding agents working in
 
 ## Project Summary
 
-OSIG is the Open Source Social Image Generator. The long-term direction is AI-agent-first image infrastructure: agents should be able to discover supported image templates, provide structured text and asset inputs, render deterministic previews, and either save image bytes into a project or create signed public Open Graph image URLs.
+OSIG is the Open Source Social Image Generator. The long-term direction is AI-agent-first image infrastructure: agents should be able to discover supported canvas primitives, provide structured text and asset inputs, render deterministic previews, and save image bytes into a project or publishing workflow.
 
 The hosted cloud product should be paid by default for production use. The repository remains open source and self-hostable, but hosted MCP/API access should not become an unlimited free utility.
 
@@ -81,7 +81,7 @@ npm run build
 - Tool contracts should be typed, discoverable, and safe for autonomous use.
 - MCP tools should return machine-readable metadata, warnings, hashes, content types, dimensions, and stable URLs where useful.
 - When adding image inputs, make them model-friendly: named fields, explicit enum choices, bounded text lengths, and clear validation errors.
-- Keep preview and publish flows separate. Agents should be able to iterate cheaply, then create a signed public URL only when ready.
+- Keep preview and export flows separate. Agents should be able to iterate cheaply, then export final bytes only when ready.
 - Do not add arbitrary filesystem, shell, database, or admin tools to hosted MCP.
 - The current hosted MCP surface is an unauthenticated trial. Do not expose private, admin, billing, or cross-profile tools while it remains public.
 - Reintroduce profile-key authentication before treating hosted MCP as a paid production surface.

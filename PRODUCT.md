@@ -20,7 +20,7 @@ OSIG should give agents a cheaper path: provide text and parameters, render with
 
 ## Core Workflows
 
-- Agent discovers the image contract with MCP, composes a canvas scene from text/image/rectangle layers, normalizes parameters, renders previews, then saves a PNG/JPEG or creates a signed public URL.
+- Agent discovers the image contract with MCP, composes a canvas scene from text/image/rectangle layers, normalizes parameters, renders previews, then saves a PNG/JPEG into the target project or publishing workflow.
 - Agent updates a website repository by generating OG metadata, preview images, cache-busting versions, and validation links.
 - Human signs up, retrieves an API key, checks usage/quota, manages billing, and reads integration docs.
 - Self-hoster runs the open source app and adapts canvas primitives for private use.

@@ -4,7 +4,7 @@
 
 OSIG uses a restrained technical UI system for agent-first image infrastructure. The product should feel like a reliable developer tool: clear contracts, visible examples, copyable code, predictable billing, and fast diagnostics.
 
-The generated images are also part of the product design. They should look polished enough for production social previews while remaining deterministic, template-driven, and safe under long text or missing assets.
+The generated images are also part of the product design. They should look polished enough for production social previews while remaining deterministic, canvas-driven, and safe under long text or missing assets.
 
 ## Interface Priority
 
@@ -60,13 +60,13 @@ Add new component classes only when the pattern repeats across pages. For one-of
 
 ## Generated Image Design
 
-- Templates should be text-safe first: clamp, wrap, or truncate deliberately.
+- Canvas text layers should be text-safe first: clamp, wrap, or truncate deliberately.
 - Always test both `x` and `meta` dimensions.
-- Missing `image_url` should produce a deliberate fallback, not a broken layout.
+- Missing image layer sources should produce a clear validation error, not a broken layout.
 - Invalid remote images should fail or degrade consistently according to renderer behavior.
 - Watermarks should be legible but not destructive; paid output should remove them cleanly.
 - Avoid visual styles that look like generic AI art. The product promise is code-generated reliability.
-- New templates should document their intended content type, required/optional fields, and truncation behavior.
+- New canvas primitives should document their intended use, required/optional fields, and clipping or truncation behavior.
 
 ## Interaction
 
