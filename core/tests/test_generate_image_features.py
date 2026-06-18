@@ -281,6 +281,27 @@ class TestAgentImageService:
 
         assert "Image URL host must resolve to public IP addresses" in str(exc.value)
 
+    def test_image_spec_rejects_layers_over_pixel_area_limit(self):
+        with pytest.raises(ValidationError) as exc:
+            ImageSpec.model_validate(
+                {
+                    "width": 2000,
+                    "height": 1250,
+                    "layers": [
+                        {
+                            "kind": "rect",
+                            "x": 0,
+                            "y": 0,
+                            "width": 4000,
+                            "height": 4000,
+                            "fill": {"type": "linear_gradient", "from": "#1d4ed8", "to": "#7c3aed", "angle": 45},
+                        }
+                    ],
+                }
+            )
+
+        assert "Layer area must be at most 2500000 pixels" in str(exc.value)
+
     def test_normalize_image_spec_warns_when_text_is_clamped(self):
         normalized = normalize_image_spec(
             ImageSpec.model_validate(
@@ -469,6 +490,30 @@ class TestAgentImageService:
         assert right_fill[2] > right_fill[0]
         assert max(border) < 20
         assert shadow != (255, 255, 255)
+
+    def test_canvas_renderer_rejects_oversized_raw_rect_layers(self):
+        import core.image_styles as image_styles
+
+        with pytest.raises(ValueError) as exc:
+            image_styles.render_canvas_image(
+                {
+                    "width": 800,
+                    "height": 450,
+                    "background": "#ffffff",
+                    "layers": [
+                        {
+                            "kind": "rect",
+                            "x": 0,
+                            "y": 0,
+                            "width": 4000,
+                            "height": 4000,
+                            "fill": {"type": "linear_gradient", "from": "#1d4ed8", "to": "#7c3aed", "angle": 45},
+                        }
+                    ],
+                }
+            )
+
+        assert "Layer area must be at most 2500000 pixels" in str(exc.value)
 
 
 def test_google_font_provider_loader_downloads_and_caches_font(settings, tmp_path, monkeypatch):

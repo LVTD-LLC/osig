@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import math
 import re
 from typing import Any
 from urllib.parse import urljoin
@@ -15,6 +16,7 @@ from core.utils import check_if_profile_has_pro_subscription
 from osig.utils import get_osig_logger
 
 logger = get_osig_logger(__name__)
+DEFAULT_MAX_RENDER_LAYER_PIXELS = 2_500_000
 
 RGBA_RE = re.compile(
     r"^rgba?\(\s*(?P<red>\d{1,3})\s*,\s*(?P<green>\d{1,3})\s*,\s*(?P<blue>\d{1,3})(?:\s*,\s*(?P<alpha>[0-9.]+)\s*)?\)$",
@@ -160,7 +162,8 @@ def _linear_gradient(size: tuple[int, int], fill: dict[str, Any], opacity: float
 
     angle = int(fill.get("angle", 0)) % 360
     if angle:
-        rotated = mask.resize((max(width, height) * 2, max(width, height) * 2))
+        rotated_side = max(1, math.ceil(math.hypot(width, height)))
+        rotated = mask.resize((rotated_side, rotated_side))
         rotated = rotated.rotate(-angle, resample=Image.Resampling.BICUBIC, expand=False)
         left = (rotated.width - width) // 2
         top = (rotated.height - height) // 2
@@ -176,6 +179,12 @@ def _fill_image(size: tuple[int, int], fill: str | dict[str, Any], opacity: floa
         raise ValueError(f"Unsupported fill type: {fill.get('type')}")
 
     return Image.new("RGBA", size, parse_color(fill, opacity))
+
+
+def _validate_render_layer_pixels(width: int, height: int) -> None:
+    max_pixels = int(getattr(settings, "OSIG_MAX_RENDER_LAYER_PIXELS", DEFAULT_MAX_RENDER_LAYER_PIXELS))
+    if width * height > max_pixels:
+        raise ValueError(f"Layer area must be at most {max_pixels} pixels.")
 
 
 def _draw_shadow(img: Image.Image, layer: dict[str, Any], radius: int) -> None:
@@ -204,6 +213,7 @@ def _draw_rect(img: Image.Image, layer: dict[str, Any]) -> None:
     y = int(layer["y"])
     width = int(layer["width"])
     height = int(layer["height"])
+    _validate_render_layer_pixels(width, height)
     radius = int(layer.get("radius") or 0)
     opacity = float(layer.get("opacity", 1))
 
@@ -328,8 +338,12 @@ def _draw_image(img: Image.Image, layer: dict[str, Any]) -> None:
     if source is None:
         raise ValueError("Image layer requires src.")
 
+    width = int(layer["width"])
+    height = int(layer["height"])
+    _validate_render_layer_pixels(width, height)
+
     remote = _load_source_image(source)
-    resized = _resize_image(remote, int(layer["width"]), int(layer["height"]), layer.get("fit", "cover"))
+    resized = _resize_image(remote, width, height, layer.get("fit", "cover"))
     resized = _apply_radius(resized, int(layer.get("radius") or 0))
     resized = _apply_opacity(resized, float(layer.get("opacity", 1)))
     _composite_clipped(img, resized, int(layer["x"]), int(layer["y"]))

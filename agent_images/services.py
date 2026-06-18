@@ -47,6 +47,7 @@ MIN_CANVAS_EDGE = 200
 MAX_CANVAS_EDGE = 2000
 MAX_CANVAS_PIXELS = 2_500_000
 MAX_LAYER_EDGE = 4000
+MAX_LAYER_PIXELS = MAX_CANVAS_PIXELS
 MAX_LAYERS = 50
 MAX_INLINE_IMAGE_BYTES = 2_000_000
 
@@ -175,6 +176,12 @@ class RectLayer(CanvasLayerBase):
     def validate_fill(cls, value: CanvasFill) -> CanvasFill:
         return _validate_fill(value)
 
+    @model_validator(mode="after")
+    def validate_area(self) -> RectLayer:
+        if self.width * self.height > MAX_LAYER_PIXELS:
+            raise ValueError(f"Layer area must be at most {MAX_LAYER_PIXELS} pixels.")
+        return self
+
 
 class TextLayer(CanvasLayerBase):
     kind: Literal["text"]
@@ -216,6 +223,12 @@ class ImageLayer(CanvasLayerBase):
     height: Annotated[int, Field(ge=1, le=MAX_LAYER_EDGE, description="Image box height in pixels.")]
     fit: Annotated[ImageFit, Field(default="cover", description="How the image should fit inside its box.")]
     radius: Annotated[int, Field(default=0, ge=0, le=MAX_LAYER_EDGE, description="Corner radius in pixels.")]
+
+    @model_validator(mode="after")
+    def validate_area(self) -> ImageLayer:
+        if self.width * self.height > MAX_LAYER_PIXELS:
+            raise ValueError(f"Layer area must be at most {MAX_LAYER_PIXELS} pixels.")
+        return self
 
 
 CanvasLayer = Annotated[RectLayer | TextLayer | ImageLayer, Field(discriminator="kind")]
@@ -456,6 +469,7 @@ def image_contract() -> dict[str, Any]:
             "max_layers": MAX_LAYERS,
             "max_inline_image_bytes": MAX_INLINE_IMAGE_BYTES,
             "max_layer_edge": MAX_LAYER_EDGE,
+            "max_layer_pixels": MAX_LAYER_PIXELS,
         },
         "layer_kinds": {
             "rect": {
