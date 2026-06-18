@@ -6,6 +6,7 @@ from django.test import RequestFactory, override_settings
 from django.urls import reverse
 
 from core.templatetags.seo_tags import site_url
+from core.views import MCP_AGENT_PROMPT
 
 
 @pytest.mark.django_db
@@ -20,7 +21,7 @@ class TestHomeView:
         response = client.get(url)
         assert "pages/home.html" in [t.name for t in response.templates]
 
-    def test_home_view_is_reduced_to_project_info_and_agent_prompt(self, client):
+    def test_home_view_is_reduced_to_project_info_and_copy_prompt(self, client):
         response = client.get(reverse("home"))
 
         body = response.content.decode()
@@ -29,6 +30,9 @@ class TestHomeView:
         assert "Inspect templates. Render previews. Export PNG, JPEG, or signed URLs." in body
         assert "https://osig.app/mcp/" in body
         assert "Copy AI prompt" in body
+        assert "Copy the setup prompt." in body
+        assert "Paste it into your coding agent" in body
+        assert 'class="sr-only"' in body
         assert "MCP docs" not in body
         assert "Pricing" not in body
         assert "Back to guides" not in body
@@ -36,6 +40,14 @@ class TestHomeView:
         assert 'data-controller="agent-studio"' not in body
         assert "#generator" not in body
         assert "#studio" not in body
+
+    def test_mcp_agent_prompt_is_concise_setup_instruction(self):
+        assert "https://osig.app/mcp/" in MCP_AGENT_PROMPT
+        assert "deterministic Open Graph" in MCP_AGENT_PROMPT
+        assert "get_image_contract" not in MCP_AGENT_PROMPT
+        assert "normalize_image_spec" not in MCP_AGENT_PROMPT
+        assert "render_image_preview" not in MCP_AGENT_PROMPT
+        assert "export_image" not in MCP_AGENT_PROMPT
 
 
 @pytest.mark.django_db
