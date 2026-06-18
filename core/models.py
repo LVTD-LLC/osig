@@ -111,7 +111,7 @@ class RenderAttempt(BaseModel):
         Profile, null=True, blank=True, on_delete=models.SET_NULL, related_name="render_attempts"
     )
     key = models.CharField(max_length=12, blank=True)
-    style = models.CharField(max_length=64, blank=True)
+    renderer = models.CharField(max_length=64, blank=True)
     success = models.BooleanField(default=False)
     error_type = models.CharField(max_length=64, blank=True)
     duration_ms = models.PositiveIntegerField(default=0)

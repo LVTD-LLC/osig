@@ -24,7 +24,7 @@
 - `agent_images/views.py`: Studio render API.
 - `core/mcp.py`: compatibility import for the new MCP module.
 - `core/mcp_auth.py`: profile-key MCP auth helpers; not currently mounted on the public trial MCP surface.
-- `core/image_styles.py`: image style router and template renderers.
+- `core/image_styles.py`: deterministic canvas layer renderer.
 - `core/image_utils.py`: dimensions, font loading, image fetching, output encoding, watermark helper.
 - `core/views.py`: public pages, account settings, billing redirects, and utility image views.
 - `core/api/views.py`: blog submission and render metrics.
@@ -40,7 +40,7 @@
 
 - MCP changes belong in `agent_images/mcp.py` unless they require shared render/auth behavior.
 - Public JSON API changes belong in `core/api/`.
-- Render template changes belong in `core/image_styles.py`; shared image mechanics belong in `core/image_utils.py`.
+- Canvas renderer changes belong in `core/image_styles.py`; shared image mechanics belong in `core/image_utils.py`.
 - Studio render API behavior belongs in `agent_images/views.py`; shared image behavior belongs in `agent_images/services.py`.
 - New persisted state belongs in `core/models.py` with migrations and admin/test updates.
 - Human UI changes should use Django templates, Stimulus controllers, and CSS tokens already present in `frontend/src/styles/index.css`.
@@ -49,7 +49,7 @@
 ## Placement Rules
 
 - Add new tests beside related existing tests under `core/tests/`.
-- Add new image styles to the router, `agent_images` contract, README/docs, and test coverage in one change.
+- Add new canvas primitives to the renderer, `agent_images` contract, README/docs, and test coverage in one change.
 - Add new public API request/response shapes to `core/api/schemas.py`.
 - Add new API endpoints to `core/api/views.py` and route through the existing Ninja API.
 - Add new CSS component primitives in `frontend/src/styles/index.css` only when repeated across pages.
@@ -60,7 +60,7 @@
 
 - Prefer explicit imports from local modules.
 - Keep Django settings access through `django.conf.settings`.
-- Use existing helper names and public parameter names: `style`, `site`, `font`, `title`, `subtitle`, `eyebrow`, `image_url`, `image_or_logo`, `format`, `quality`, `max_kb`, `v`, `key`.
+- Use existing public canvas parameter names: `site`, `width`, `height`, `background`, `layers`, `kind`, `x`, `y`, `format`, `quality`, `max_kb`, `v`, and `key`.
 - Use `profile_id` only internally after authenticating or resolving a `Profile`.
 - Keep public enum values stable unless there is a migration plan.
 

@@ -53,7 +53,6 @@ The MCP source of truth is `agent_images/mcp.py`.
 Current tools:
 
 - `get_image_contract`
-- `list_image_templates`
 - `normalize_image_spec`
 - `render_image_preview`
 - `export_image`
@@ -64,15 +63,15 @@ Keep MCP tools narrow, typed, and deterministic. They should wrap the shared `ag
 
 ## Rendering Model
 
-Image rendering starts in `core/image_styles.py` and shared utilities live in `core/image_utils.py`. Supported output formats are PNG and JPEG. Supported size presets are `x` and `meta`; `get_image_dimensions` currently returns half-size dimensions for the named social targets.
+Image rendering starts in `core/image_styles.py` and shared utilities live in `core/image_utils.py`. Supported output formats are PNG and JPEG. Supported size presets are `x` and `meta`; `get_image_dimensions` currently returns half-size dimensions for the named social targets. Agents may also provide bounded custom `width` and `height` values from 200 to 2000 pixels.
 
-Current style choices are:
+The current rendering contract is a canvas scene:
 
-- `base`
-- `logo`
-- `job_classic`
-- `job_logo`
-- `job_clean`
+- `background`: a canvas color.
+- `layers`: ordered paint layers. Later layers draw on top of earlier layers.
+- `rect` layers: pixel-positioned color rectangles with optional opacity and radius.
+- `text` layers: pixel-positioned copy with font, size, color, wrapping width, line height, alignment, opacity, and optional stroke.
+- `image` layers: pixel-positioned remote image boxes with `cover`, `contain`, or `stretch` fit.
 
 Current font support includes bundled fonts plus provider-backed fonts:
 
@@ -83,7 +82,7 @@ Current font support includes bundled fonts plus provider-backed fonts:
 
 Provider fonts are fetched through the Google Fonts CSS API on first render and cached locally through `core.font_providers`. Keep provider values namespaced and bounded; do not accept arbitrary font URLs from MCP/API callers.
 
-Future styles should be added through the router, MCP contract, docs, and tests together.
+Future canvas primitives should be added through the renderer, MCP contract, docs, and tests together.
 
 ## Auth, Billing, Quotas
 

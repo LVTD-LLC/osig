@@ -111,13 +111,14 @@ export default class extends Controller {
   }
 
   renderMetadata(payload) {
-    const hash = payload.sha256 ? `${payload.sha256.slice(0, 10)}…` : "none";
+    const hash = payload.sha256 ? `${payload.sha256.slice(0, 10)}...` : "none";
     const width = Number(payload.width);
     const height = Number(payload.height);
     const dimensions = `${Number.isFinite(width) ? width : 0} x ${Number.isFinite(height) ? height : 0}`;
+    const layers = Array.isArray(payload.spec?.layers) ? payload.spec.layers.length : 0;
 
     this.metadataTarget.innerHTML = `
-      <div><span>Template</span><strong>${this.escapeHtml(payload.spec?.style || "base")}</strong></div>
+      <div><span>Layers</span><strong>${layers}</strong></div>
       <div><span>Size</span><strong>${dimensions}</strong></div>
       <div><span>Type</span><strong>${this.escapeHtml(payload.content_type || "")}</strong></div>
       <div><span>Hash</span><strong title="${this.escapeHtml(payload.sha256 || "")}">${this.escapeHtml(hash)}</strong></div>
@@ -126,7 +127,7 @@ export default class extends Controller {
 
   exportPayload(payload) {
     return {
-      filename: `osig-${payload.spec?.style || "image"}.${payload.extension || "png"}`,
+      filename: `osig-canvas.${payload.extension || "png"}`,
       content_type: payload.content_type,
       width: payload.width,
       height: payload.height,
@@ -170,7 +171,7 @@ export default class extends Controller {
 
     const link = document.createElement("a");
     link.href = this.latestPayload.data_uri;
-    link.download = `osig-${this.latestPayload.spec?.style || "image"}.${this.latestPayload.extension || "png"}`;
+    link.download = `osig-canvas.${this.latestPayload.extension || "png"}`;
     link.click();
   }
 

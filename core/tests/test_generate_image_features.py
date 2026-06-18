@@ -8,7 +8,6 @@ from PIL import Image
 from pydantic import ValidationError
 
 from agent_images.services import ImageSpec, normalize_image_spec, render_image
-from core.image_styles import _safe_truncate, generate_job_clean_image
 from core.image_utils import load_font
 
 
@@ -17,6 +16,29 @@ def _tiny_png_buffer():
     Image.new("RGB", (16, 16), color="white").save(buffer, format="PNG")
     buffer.seek(0)
     return buffer
+
+
+def _canvas_spec(**overrides):
+    spec = {
+        "width": 800,
+        "height": 450,
+        "background": "#f8fafc",
+        "layers": [
+            {"kind": "rect", "x": 40, "y": 40, "width": 720, "height": 370, "color": "#2563eb", "radius": 28},
+            {
+                "kind": "text",
+                "x": 80,
+                "y": 120,
+                "width": 620,
+                "text": "Canvas renderer",
+                "font": "helvetica",
+                "font_size": 56,
+                "color": "#ffffff",
+            },
+        ],
+    }
+    spec.update(overrides)
+    return spec
 
 
 @pytest.mark.django_db
@@ -30,19 +52,11 @@ def test_legacy_g_endpoint_is_removed(client):
 def test_studio_render_api_returns_image_payload(client, monkeypatch):
     import agent_images.services as agent_services
 
-    monkeypatch.setattr(agent_services, "generate_image_router", lambda params: _tiny_png_buffer())
+    monkeypatch.setattr(agent_services, "render_canvas_image", lambda params: _tiny_png_buffer())
 
     response = client.post(
         "/api/studio/render",
-        data=json.dumps(
-            {
-                "spec": {
-                    "style": "base",
-                    "site": "x",
-                    "title": "Studio render",
-                }
-            }
-        ),
+        data=json.dumps({"spec": _canvas_spec()}),
         content_type="application/json",
     )
 
@@ -84,14 +98,14 @@ def test_studio_render_api_rejects_non_object_json(client, payload):
 def test_studio_render_api_handles_authenticated_user_without_profile(client, monkeypatch):
     import agent_images.services as agent_services
 
-    monkeypatch.setattr(agent_services, "generate_image_router", lambda params: _tiny_png_buffer())
+    monkeypatch.setattr(agent_services, "render_canvas_image", lambda params: _tiny_png_buffer())
     user = User.objects.create_user(username="missing-profile", email="missing-profile@example.com", password="pass123")
     user.profile.delete()
     client.force_login(user)
 
     response = client.post(
         "/api/studio/render",
-        data=json.dumps({"spec": {"style": "base", "site": "x", "title": "Missing profile"}}),
+        data=json.dumps({"spec": _canvas_spec()}),
         content_type="application/json",
     )
 
@@ -101,63 +115,103 @@ def test_studio_render_api_handles_authenticated_user_without_profile(client, mo
 
 @pytest.mark.django_db
 class TestAgentImageService:
-    def test_normalize_image_spec_maps_logo_alias(self):
+    def test_normalize_image_spec_supports_custom_dimensions_and_layers(self):
         user = User.objects.create_user(username="normalizer", email="normalizer@example.com", password="pass123")
 
         normalized = normalize_image_spec(
-            ImageSpec(
-                key=user.profile.key,
-                style="job_logo",
-                title="Senior Django Engineer",
-                image_or_logo="https://example.com/logo.png",
+            ImageSpec.model_validate(
+                _canvas_spec(
+                    key=user.profile.key,
+                    width=640,
+                    height=360,
+                    layers=[{"kind": "text", "x": 24, "y": 40, "text": "Exact pixels", "font_size": 40}],
+                )
             )
         )
 
-        assert normalized.spec["image_url"] == "https://example.com/logo.png"
+        assert normalized.spec["width"] == 640
+        assert normalized.spec["height"] == 360
+        assert normalized.spec["layers"][0]["kind"] == "text"
         assert normalized.spec["key"] == user.profile.key
-        assert normalized.safe_render_params["image_url"] == "https://example.com/logo.png"
+        assert normalized.safe_render_params["layers"][0]["x"] == 24
         assert "profile_id" not in normalized.safe_render_params
+
+    def test_normalize_image_spec_defaults_to_x_preset_when_dimensions_are_omitted(self):
+        normalized = normalize_image_spec(
+            ImageSpec.model_validate(
+                {"background": "#ffffff", "layers": [{"kind": "text", "x": 10, "y": 20, "text": "Default"}]}
+            )
+        )
+
+        assert normalized.width == 800
+        assert normalized.height == 450
+        assert normalized.spec["width"] == 800
+        assert normalized.spec["height"] == 450
 
     def test_normalize_image_spec_supports_google_font_provider(self):
         normalized = normalize_image_spec(
-            ImageSpec(
-                style="base",
-                font="google:Playfair Display",
-                title="Provider fonts",
+            ImageSpec.model_validate(
+                {
+                    "layers": [
+                        {
+                            "kind": "text",
+                            "x": 40,
+                            "y": 40,
+                            "text": "Provider fonts",
+                            "font": "google:Playfair Display",
+                        }
+                    ]
+                }
             )
         )
 
-        assert normalized.spec["font"] == "google:playfair-display"
-        assert normalized.safe_render_params["font"] == "google:playfair-display"
+        assert normalized.spec["layers"][0]["font"] == "google:playfair-display"
+        assert normalized.safe_render_params["layers"][0]["font"] == "google:playfair-display"
         assert normalized.warnings == [
             "Provider fonts are fetched from the third-party provider on first render and cached locally."
         ]
 
     def test_image_spec_rejects_unknown_font_provider(self):
         with pytest.raises(ValidationError) as exc:
-            ImageSpec(style="base", font="adobe:source-sans-3", title="Unknown provider")
+            ImageSpec.model_validate(
+                {
+                    "layers": [
+                        {"kind": "text", "x": 10, "y": 20, "text": "Unknown provider", "font": "adobe:source-sans-3"}
+                    ]
+                }
+            )
 
         assert "Unsupported font provider 'adobe'" in str(exc.value)
 
     def test_image_spec_rejects_unknown_google_font_family(self):
         with pytest.raises(ValidationError) as exc:
-            ImageSpec(style="base", font="google:noto-color-emoji", title="Unknown family")
+            ImageSpec.model_validate(
+                {
+                    "layers": [
+                        {"kind": "text", "x": 10, "y": 20, "text": "Unknown family", "font": "google:noto-color-emoji"}
+                    ]
+                }
+            )
 
         assert "Unknown Google Font family 'noto-color-emoji'" in str(exc.value)
 
     def test_image_spec_rejects_malformed_google_font_slug(self):
         with pytest.raises(ValidationError) as exc:
-            ImageSpec(style="base", font="google:inter-", title="Malformed family")
+            ImageSpec.model_validate(
+                {"layers": [{"kind": "text", "x": 10, "y": 20, "text": "Malformed family", "font": "google:inter-"}]}
+            )
 
         assert "Provider font families may contain only lowercase letters" in str(exc.value)
 
+    def test_image_spec_rejects_invalid_color(self):
+        with pytest.raises(ValidationError) as exc:
+            ImageSpec.model_validate({"background": "not-a-color", "layers": []})
+
+        assert "Invalid color value" in str(exc.value)
+
     def test_render_image_supports_png_and_jpeg_content_types(self):
-        png_payload = render_image(
-            ImageSpec(style="base", site="x", title="Format Test", subtitle="Content types", format="png")
-        )
-        jpeg_payload = render_image(
-            ImageSpec(style="base", site="x", title="Format Test", subtitle="Content types", format="jpeg", quality=70)
-        )
+        png_payload = render_image(ImageSpec.model_validate({**_canvas_spec(), "format": "png"}))
+        jpeg_payload = render_image(ImageSpec.model_validate({**_canvas_spec(), "format": "jpeg", "quality": 70}))
 
         assert png_payload["content_type"] == "image/png"
         assert base64.b64decode(png_payload["image_base64"]).startswith(b"\x89PNG")
@@ -165,14 +219,7 @@ class TestAgentImageService:
         assert base64.b64decode(jpeg_payload["image_base64"]).startswith(b"\xff\xd8")
 
     def test_jpeg_quality_output_is_deterministic(self):
-        spec = ImageSpec(
-            style="base",
-            site="x",
-            title="Deterministic",
-            subtitle="JPEG quality",
-            format="jpeg",
-            quality=62,
-        )
+        spec = ImageSpec.model_validate({**_canvas_spec(), "format": "jpeg", "quality": 62})
 
         first = render_image(spec)
         second = render_image(spec)
@@ -181,42 +228,41 @@ class TestAgentImageService:
         assert first["image_base64"] == second["image_base64"]
         assert first["image_base64"] != lower_quality["image_base64"]
 
-    @pytest.mark.parametrize("style", ["job_classic", "job_logo", "job_clean"])
-    def test_render_image_supports_job_board_styles(self, style):
+    def test_canvas_image_layer_supports_remote_assets(self, monkeypatch):
+        import core.image_styles as image_styles
+
+        image_buffer = io.BytesIO()
+        Image.new("RGB", (8, 8), color="red").save(image_buffer, format="PNG")
+
+        class FakeResponse:
+            content = image_buffer.getvalue()
+
+            def raise_for_status(self):
+                return None
+
+        monkeypatch.setattr(image_styles.requests, "get", lambda *args, **kwargs: FakeResponse())
+
         payload = render_image(
-            ImageSpec(
-                style=style,
-                site="x",
-                title="Senior Django Engineer",
-                subtitle="Ship production systems for real users",
-                eyebrow="Remote",
+            ImageSpec.model_validate(
+                {
+                    "width": 300,
+                    "height": 220,
+                    "layers": [
+                        {
+                            "kind": "image",
+                            "x": 20,
+                            "y": 20,
+                            "width": 120,
+                            "height": 80,
+                            "url": "https://example.com/red.png",
+                        }
+                    ],
+                }
             )
         )
 
         assert payload["content_type"] == "image/png"
         assert payload["byte_size"] > 0
-
-
-def test_safe_truncation_limits_copy_length():
-    long_text = "A" * 500
-    truncated = _safe_truncate(long_text, 64)
-
-    assert len(truncated) <= 64
-    assert truncated.endswith("...")
-
-
-def test_job_clean_template_handles_long_copy_without_errors():
-    image = generate_job_clean_image(
-        profile_id=None,
-        site="x",
-        font="helvetica",
-        title="Senior Python Engineer " * 30,
-        subtitle="Build reliable systems and own customer outcomes. " * 40,
-        eyebrow="Hiring now " * 20,
-        image_url=None,
-    )
-
-    assert image.getbuffer().nbytes > 0
 
 
 def test_google_font_provider_loader_downloads_and_caches_font(settings, tmp_path, monkeypatch):

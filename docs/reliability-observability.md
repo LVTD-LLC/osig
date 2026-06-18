@@ -36,7 +36,7 @@ New model: `RenderAttempt`
 Each render attempt tracks:
 
 - profile/key
-- style
+- renderer
 - success/failure
 - error type
 - duration in ms

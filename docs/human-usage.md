@@ -5,7 +5,7 @@ The old public `/g` URL generator has been removed. Humans now use the Agent Ima
 ## Workflow
 
 1. Open the Studio.
-2. Choose a template, dimensions, format, font, and copy fields.
+2. Compose a canvas with dimensions, background color, format, and ordered text/image/rectangle layers.
 3. Render a preview.
 4. Copy the repository payload or download the generated image.
 5. Commit the image into the target project and reference that asset in Open Graph and Twitter metadata.

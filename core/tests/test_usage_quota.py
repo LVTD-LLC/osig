@@ -11,6 +11,16 @@ from core.admin import ProfileUsageModelAdmin
 from core.models import ProfileUsage
 
 
+def _canvas_spec(**overrides):
+    spec = {
+        "width": 800,
+        "height": 450,
+        "layers": [{"kind": "text", "x": 40, "y": 40, "text": "Quota"}],
+    }
+    spec.update(overrides)
+    return spec
+
+
 @pytest.fixture
 def disable_async_and_image_router(monkeypatch):
     import agent_images.services as agent_services
@@ -21,7 +31,7 @@ def disable_async_and_image_router(monkeypatch):
         buffer.seek(0)
         return buffer
 
-    monkeypatch.setattr(agent_services, "generate_image_router", lambda params: tiny_png())
+    monkeypatch.setattr(agent_services, "render_canvas_image", lambda params: tiny_png())
 
 
 @pytest.mark.django_db
@@ -32,7 +42,7 @@ def test_warns_at_80_percent_daily_limit(client, disable_async_and_image_router)
 
     responses = []
     for _ in range(4):
-        response = render_image(ImageSpec(style="base", title="Quota", key=key))
+        response = render_image(ImageSpec.model_validate(_canvas_spec(key=key)))
         responses.append(response)
 
     assert all(response["content_type"] == "image/png" for response in responses)
@@ -47,11 +57,11 @@ def test_blocks_when_daily_limit_reaches_100_percent(client, disable_async_and_i
     user = User.objects.create_user(username="blocked-user", email="blocked@example.com", password="pass123")
     key = user.profile.key
 
-    ok_1 = render_image(ImageSpec(style="base", title="Quota", key=key))
-    ok_2 = render_image(ImageSpec(style="base", title="Quota", key=key))
+    ok_1 = render_image(ImageSpec.model_validate(_canvas_spec(key=key)))
+    ok_2 = render_image(ImageSpec.model_validate(_canvas_spec(key=key)))
 
     with pytest.raises(ImageUsageLimitExceeded) as exc_info:
-        render_image(ImageSpec(style="base", title="Quota", key=key))
+        render_image(ImageSpec.model_validate(_canvas_spec(key=key)))
 
     assert ok_1["content_type"] == "image/png"
     assert ok_2["content_type"] == "image/png"
@@ -64,10 +74,10 @@ def test_blocks_when_monthly_limit_reaches_100_percent(client, disable_async_and
     user = User.objects.create_user(username="monthly-user", email="monthly@example.com", password="pass123")
     key = user.profile.key
 
-    ok = render_image(ImageSpec(style="base", title="Quota", key=key))
+    ok = render_image(ImageSpec.model_validate(_canvas_spec(key=key)))
 
     with pytest.raises(ImageUsageLimitExceeded) as exc_info:
-        render_image(ImageSpec(style="base", title="Quota", key=key))
+        render_image(ImageSpec.model_validate(_canvas_spec(key=key)))
 
     assert ok["content_type"] == "image/png"
     assert exc_info.value.usage_state.blocked_reasons == ("monthly",)
@@ -76,7 +86,7 @@ def test_blocks_when_monthly_limit_reaches_100_percent(client, disable_async_and
 @pytest.mark.django_db
 @override_settings(OSIG_DAILY_USAGE_LIMIT=1, OSIG_MONTHLY_USAGE_LIMIT=1, OSIG_USAGE_WARNING_PERCENT=0.8)
 def test_unsigned_or_no_key_requests_remain_backward_compatible(client, disable_async_and_image_router):
-    response = render_image(ImageSpec(style="base", title="No key flow"))
+    response = render_image(ImageSpec.model_validate(_canvas_spec()))
 
     assert response["content_type"] == "image/png"
     assert response["usage"] is None

@@ -46,15 +46,15 @@ class RenderAttemptAdmin(admin.ModelAdmin):
     list_display = (
         "created_at",
         "profile_key",
-        "style",
+        "renderer",
         "success",
         "error_type",
         "duration_ms",
         "attempt_number",
     )
     ordering = ("-created_at",)
-    list_filter = ("success", "style", "error_type")
-    search_fields = ("profile__key", "key", "style", "error_type")
+    list_filter = ("success", "renderer", "error_type")
+    search_fields = ("profile__key", "key", "renderer", "error_type")
 
     @admin.display(ordering="profile__key", description="Profile key")
     def profile_key(self, obj):

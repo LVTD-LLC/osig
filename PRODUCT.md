@@ -2,7 +2,7 @@
 
 ## Summary
 
-OSIG is AI-agent-first infrastructure for generating deterministic social preview images from structured text, remote assets, and reusable code templates. The product lets an AI agent avoid expensive model image generation when the needed output is a clean Open Graph or Twitter card image.
+OSIG is AI-agent-first infrastructure for generating deterministic social preview images from typed canvas specs, text layers, remote assets, and code rendering. The product lets an AI agent avoid expensive model image generation when the needed output is a clean Open Graph or Twitter card image.
 
 The current app supports a hosted FastMCP server, a local stdio MCP entrypoint, a Studio render API, usage metering, quotas, Stripe subscriptions, and render observability. Future product work should make the MCP/API workflow the primary experience and keep the web UI focused on setup, docs, billing, examples, and diagnostics.
 
@@ -10,7 +10,7 @@ The current app supports a hosted FastMCP server, a local stdio MCP entrypoint, 
 
 Primary users are AI agents working on behalf of developers, founders, publishers, indie hackers, marketers, and small teams. The agent needs to generate an image asset, embed an OG URL, or update repository metadata without asking a human to open a design tool.
 
-Secondary users are humans configuring accounts, API keys, billing, self-hosting, templates, and validation. They need confidence that the generated image will be stable, cheap, and social-platform-ready.
+Secondary users are humans configuring accounts, API keys, billing, self-hosting, canvas examples, and validation. They need confidence that the generated image will be stable, cheap, and social-platform-ready.
 
 ## Problem
 
@@ -20,16 +20,16 @@ OSIG should give agents a cheaper path: provide text and parameters, render with
 
 ## Core Workflows
 
-- Agent discovers the image contract with MCP, chooses a template, normalizes parameters, renders previews, then saves a PNG/JPEG or creates a signed public URL.
+- Agent discovers the image contract with MCP, composes a canvas scene from text/image/rectangle layers, normalizes parameters, renders previews, then saves a PNG/JPEG or creates a signed public URL.
 - Agent updates a website repository by generating OG metadata, preview images, cache-busting versions, and validation links.
 - Human signs up, retrieves an API key, checks usage/quota, manages billing, and reads integration docs.
-- Self-hoster runs the open source app and adapts templates for private use.
+- Self-hoster runs the open source app and adapts canvas primitives for private use.
 - Admin investigates render failure rate, p95 render time, and recent generated images.
 
 ## What Good Looks Like
 
 - An agent can generate a useful image without browsing the web UI.
-- The available styles, dimensions, fields, defaults, warnings, and publish steps are machine-readable.
+- The available canvas dimensions, layer kinds, fields, defaults, warnings, and publish steps are machine-readable.
 - Preview generation is cheap and repeatable.
 - Final output is deterministic, cacheable, and safe to embed in production metadata.
 - The hosted product makes paid access, watermark behavior, quotas, and entitlement states obvious.
@@ -43,9 +43,9 @@ The default unpaid behavior is watermarking. Paid plans should remove watermarks
 
 ## In Scope
 
-- MCP tools for image contract discovery, template listing, normalization, preview rendering, and final image export.
+- MCP tools for image contract discovery, normalization, preview rendering, and final image export.
 - API endpoints for render metrics and integration helpers that should not be exposed as unauthenticated MCP tools.
-- Open Graph and social preview templates, starting with article, logo, and job-board styles.
+- Open Graph and social preview canvas rendering with text, image, rectangle/color layers, and bounded custom dimensions.
 - Deterministic code-rendered PNG/JPEG output.
 - Usage metering, quota enforcement, paid access, watermarking, and deterministic export workflows.
 - Human-facing setup, docs, playground, billing, account, validation, and observability screens.
@@ -54,7 +54,7 @@ The default unpaid behavior is watermarking. Paid plans should remove watermarks
 ## Out Of Scope
 
 - Defaulting to model-generated images.
-- A general-purpose design editor.
+- A human-oriented general-purpose design editor. The agent-facing canvas remains a bounded render spec, not an interactive design suite.
 - A free unlimited hosted image rendering/CDN service.
 - Arbitrary remote control through MCP, such as database browsing, shell execution, or file access.
 - Complex brand-management suites until the agent-first OG workflow is clearly working.
@@ -68,5 +68,5 @@ Clear, practical, technical, and reliable. OSIG should sound like a tool an agen
 - Agents can complete the discover, preview, publish loop with MCP alone.
 - Hosted usage converts to paid plans because it is cheaper than model generation and easier than custom image code.
 - Render failures are observable and actionable.
-- New templates are easy to test against long text, missing images, invalid remote assets, and both supported dimensions.
+- Canvas specs are easy to test against long text, missing images, invalid remote assets, clipping, and supported dimensions.
 - Human users understand the difference between open source self-hosting and paid hosted cloud access.

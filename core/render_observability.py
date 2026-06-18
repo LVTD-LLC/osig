@@ -69,7 +69,7 @@ def record_render_attempt(
     *,
     profile: Profile | None,
     key: str,
-    style: str,
+    renderer: str,
     success: bool,
     duration_ms: int,
     error_type: str = "",
@@ -78,7 +78,7 @@ def record_render_attempt(
     RenderAttempt.objects.create(
         profile=profile,
         key=key,
-        style=style,
+        renderer=renderer,
         success=success,
         duration_ms=max(0, int(duration_ms)),
         error_type=error_type,

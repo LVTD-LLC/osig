@@ -1,612 +1,208 @@
-from PIL import Image, ImageDraw
+from __future__ import annotations
 
-from core.image_utils import (
-    add_watermark,
-    create_image_buffer,
-    draw_wrapped_text,
-    get_image_dimensions,
-    load_and_resize_image,
-    load_font,
-)
+import io
+from typing import Any
+
+import requests
+from django.conf import settings
+from PIL import Image, ImageColor, ImageDraw
+
+from core.image_utils import add_watermark, create_image_buffer, load_font
 from core.utils import check_if_profile_has_pro_subscription
 from osig.utils import get_osig_logger
 
 logger = get_osig_logger(__name__)
 
 
-def _safe_truncate(text, max_chars):
-    if not text:
-        return ""
-
-    normalized_text = " ".join(str(text).split())
-    if len(normalized_text) <= max_chars:
-        return normalized_text
-
-    if max_chars <= 3:
-        return normalized_text[:max_chars]
-
-    return f"{normalized_text[: max_chars - 3].rstrip()}..."
+def parse_color(color: str, opacity: float = 1.0) -> tuple[int, int, int, int]:
+    rgba = ImageColor.getcolor(color, "RGBA")
+    alpha = max(0, min(255, round(rgba[3] * opacity)))
+    return rgba[0], rgba[1], rgba[2], alpha
 
 
-def _normalize_job_copy(title, subtitle, eyebrow):
-    return (
-        _safe_truncate(title, 110),
-        _safe_truncate(subtitle, 180),
-        _safe_truncate(eyebrow, 55),
+def _apply_opacity(image: Image.Image, opacity: float) -> Image.Image:
+    if opacity >= 1:
+        return image
+
+    faded = image.copy()
+    alpha = faded.getchannel("A").point(lambda value: round(value * max(0, opacity)))
+    faded.putalpha(alpha)
+    return faded
+
+
+def _composite_clipped(base: Image.Image, overlay: Image.Image, x: int, y: int) -> None:
+    left = max(x, 0)
+    top = max(y, 0)
+    right = min(x + overlay.width, base.width)
+    bottom = min(y + overlay.height, base.height)
+
+    if right <= left or bottom <= top:
+        return
+
+    crop_box = (left - x, top - y, right - x, bottom - y)
+    base.alpha_composite(overlay.crop(crop_box), (left, top))
+
+
+def _load_remote_image(url: str) -> Image.Image:
+    timeout_seconds = getattr(settings, "OSIG_IMAGE_FETCH_TIMEOUT_SECONDS", 8)
+    response = requests.get(url, timeout=timeout_seconds)
+    response.raise_for_status()
+    return Image.open(io.BytesIO(response.content)).convert("RGBA")
+
+
+def _resize_image(image: Image.Image, width: int, height: int, fit: str) -> Image.Image:
+    if fit == "stretch":
+        return image.resize((width, height), Image.LANCZOS)
+
+    scale = (
+        min(width / image.width, height / image.height)
+        if fit == "contain"
+        else max(width / image.width, height / image.height)
     )
+    resized_width = max(1, round(image.width * scale))
+    resized_height = max(1, round(image.height * scale))
+    resized = image.resize((resized_width, resized_height), Image.LANCZOS)
+
+    if fit == "contain":
+        layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        layer.alpha_composite(resized, ((width - resized.width) // 2, (height - resized.height) // 2))
+        return layer
+
+    left = max(0, (resized.width - width) // 2)
+    top = max(0, (resized.height - height) // 2)
+    return resized.crop((left, top, left + width, top + height))
 
 
-def _draw_wrapped_text_block(draw, text, font, max_width, x_position, y_position, text_color, text_spacing, **kwargs):
-    if not text:
-        return y_position
+def _draw_rect(img: Image.Image, layer: dict[str, Any]) -> None:
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    x = int(layer["x"])
+    y = int(layer["y"])
+    width = int(layer["width"])
+    height = int(layer["height"])
+    radius = int(layer.get("radius") or 0)
+    fill = parse_color(layer["color"], float(layer.get("opacity", 1)))
+    box = [x, y, x + width, y + height]
 
-    is_title = kwargs.get("is_title", False)
-    height = kwargs.get("height")
+    if radius:
+        draw.rounded_rectangle(box, radius=radius, fill=fill)
+    else:
+        draw.rectangle(box, fill=fill)
 
+    img.alpha_composite(overlay)
+
+
+def _line_width(font, text: str) -> int:
+    bbox = font.getbbox(text)
+    return bbox[2] - bbox[0]
+
+
+def _wrap_paragraph(text: str, font, max_width: int) -> list[str]:
     words = text.split()
-    lines = []
-    current_line = []
+    if not words:
+        return [""]
+
+    lines: list[str] = []
+    current: list[str] = []
 
     for word in words:
-        test_line = " ".join(current_line + [word])
-        bbox = font.getbbox(test_line)
-        if bbox[2] <= max_width:
-            current_line.append(word)
-        else:
-            if current_line:
-                lines.append(" ".join(current_line))
-                current_line = [word]
-            else:
-                lines.append(word)
+        candidate = " ".join([*current, word])
+        if not current or _line_width(font, candidate) <= max_width:
+            current.append(word)
+            continue
 
-    if current_line:
-        lines.append(" ".join(current_line))
+        lines.append(" ".join(current))
+        current = [word]
 
-    for line in lines:
-        bbox = font.getbbox(line)
+    if current:
+        lines.append(" ".join(current))
 
-        if is_title and height:
-            bold_offset = int(height * 0.002)
-            for offset_x in range(-bold_offset - 1, bold_offset + 1):
-                for offset_y in range(-bold_offset, bold_offset + 1):
-                    draw.text((x_position + offset_x, y_position + offset_y), line, font=font, fill=text_color)
-        else:
-            draw.text((x_position, y_position), line, font=font, fill=text_color)
-
-        y_position += bbox[3] - bbox[1] + text_spacing
-
-    return y_position
+    return lines
 
 
-def _load_optional_image(image_url, width, height):
-    if not image_url:
-        return None
+def _wrap_text(text: str, font, max_width: int | None) -> list[str]:
+    if not max_width:
+        return text.splitlines() or [text]
 
-    try:
-        return load_and_resize_image(image_url, width, height)
-    except Exception as e:
-        logger.warning("Failed to load remote image", image_url=image_url, error=str(e))
-        return None
-
-
-def generate_image_router(image_data):
-    style = image_data.get("style", "base")
-    image_url = image_data.get("image_url") or image_data.get("image_or_logo")
-
-    common_kwargs = {
-        "profile_id": image_data.get("profile_id"),
-        "site": image_data.get("site"),
-        "font": image_data.get("font"),
-        "title": image_data.get("title"),
-        "subtitle": image_data.get("subtitle"),
-        "output_format": image_data.get("format", "png"),
-        "quality": image_data.get("quality"),
-        "max_kb": image_data.get("max_kb"),
-    }
-
-    if style == "logo":
-        return generate_logo_image(
-            image_url=image_url,
-            **common_kwargs,
-        )
-
-    if style == "job_classic":
-        return generate_job_classic_image(
-            eyebrow=image_data.get("eyebrow"),
-            image_url=image_url,
-            **common_kwargs,
-        )
-
-    if style == "job_logo":
-        return generate_job_logo_image(
-            eyebrow=image_data.get("eyebrow"),
-            image_url=image_url,
-            **common_kwargs,
-        )
-
-    if style == "job_clean":
-        return generate_job_clean_image(
-            eyebrow=image_data.get("eyebrow"),
-            image_url=image_url,
-            **common_kwargs,
-        )
-
-    return generate_base_image(
-        eyebrow=image_data.get("eyebrow"),
-        image_url=image_url,
-        **common_kwargs,
-    )
+    lines: list[str] = []
+    for paragraph in text.splitlines() or [text]:
+        lines.extend(_wrap_paragraph(paragraph, font, max_width))
+    return lines
 
 
-def generate_base_image(
-    profile_id,
-    site,
-    font,
-    title,
-    subtitle,
-    eyebrow,
-    image_url,
-    output_format="png",
-    quality=None,
-    max_kb=None,
-):
-    logger.info(
-        "Generating base OG image",
-        profile_id=profile_id,
-        site=site,
-        font=font,
-        title=title,
-        subtitle=subtitle,
-        eyebrow=eyebrow,
-        image_url=image_url,
-    )
-    has_pro_subscription = check_if_profile_has_pro_subscription(profile_id)
-    width, height = get_image_dimensions(site)
-
-    background_image = _load_optional_image(image_url, width, height)
-    if background_image is not None:
-        img = background_image
-    else:
-        img = Image.new("RGB", (width, height), color=(255, 255, 255))
-
-    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 180))
-    img = img.convert("RGBA")
-    img = Image.alpha_composite(img, overlay)
+def _draw_text(img: Image.Image, layer: dict[str, Any]) -> None:
+    font_size = int(layer["font_size"])
+    font = load_font(layer["font"], font_size)
+    x = int(layer["x"])
+    y = int(layer["y"])
+    block_width = layer.get("width")
+    max_width = int(block_width) if block_width else None
+    line_height = int(layer.get("line_height") or round(font_size * 1.2))
+    align = layer.get("align", "left")
+    fill = parse_color(layer["color"], float(layer.get("opacity", 1)))
+    stroke_color = layer.get("stroke_color")
+    stroke_fill = parse_color(stroke_color, float(layer.get("opacity", 1))) if stroke_color else None
+    stroke_width = int(layer.get("stroke_width") or 0)
 
     draw = ImageDraw.Draw(img)
-    text_color = (255, 255, 255)
+    current_y = y
+    for line in _wrap_text(layer["text"], font, max_width):
+        line_x = x
+        if max_width and align != "left":
+            line_width = _line_width(font, line)
+            if align == "center":
+                line_x = x + max(0, (max_width - line_width) // 2)
+            elif align == "right":
+                line_x = x + max(0, max_width - line_width)
 
-    title_font = load_font(font, int(height * 0.1))
-    subtitle_font = load_font(font, int(height * 0.05))
-    eyebrow_font = load_font(font, int(height * 0.03))
-
-    left_margin = int(width * 0.05)
-    top_margin = int(height * 0.3)
-    text_spacing = int(height * 0.02)
-    max_text_width = width - 2 * left_margin
-
-    normalized_title = _safe_truncate(title.upper() if title else "", 130)
-    normalized_subtitle = _safe_truncate(subtitle, 180)
-    normalized_eyebrow = _safe_truncate(eyebrow.upper() if eyebrow else "", 55)
-
-    current_y = top_margin
-
-    if normalized_eyebrow:
-        current_y = _draw_wrapped_text_block(
-            draw,
-            normalized_eyebrow,
-            eyebrow_font,
-            max_text_width,
-            left_margin,
-            current_y,
-            text_color,
-            text_spacing,
-        )
-        current_y += text_spacing
-
-    if normalized_title:
-        current_y = _draw_wrapped_text_block(
-            draw,
-            normalized_title,
-            title_font,
-            max_text_width,
-            left_margin,
-            current_y,
-            text_color,
-            text_spacing,
-            is_title=True,
-            height=height,
-        )
-        current_y += int(text_spacing * 3.5)
-
-    if normalized_subtitle:
-        _draw_wrapped_text_block(
-            draw,
-            normalized_subtitle,
-            subtitle_font,
-            max_text_width,
-            left_margin,
-            current_y,
-            text_color,
-            text_spacing,
-        )
-
-    if not has_pro_subscription:
-        add_watermark(img, draw, width, height)
-
-    return create_image_buffer(img, output_format=output_format, quality=quality, max_kb=max_kb)
-
-
-def generate_logo_image(
-    profile_id,
-    site,
-    font,
-    title,
-    subtitle,
-    image_url,
-    output_format="png",
-    quality=None,
-    max_kb=None,
-):
-    logger.info(
-        "Generating logo OG image",
-        profile_id=profile_id,
-        site=site,
-        font=font,
-        title=title,
-        subtitle=subtitle,
-        image_url=image_url,
-    )
-    has_pro_subscription = check_if_profile_has_pro_subscription(profile_id)
-    width, height = get_image_dimensions(site)
-
-    background_color = (30, 30, 30)
-    img = Image.new("RGB", (width, height), color=background_color)
-
-    draw = ImageDraw.Draw(img)
-    text_color = (255, 255, 255)
-
-    title_font = load_font(font, int(height * 0.08))
-    subtitle_font = load_font(font, int(height * 0.05))
-
-    if image_url:
-        logo = _load_optional_image(image_url, int(height * 0.4), int(height * 0.4))
-        if logo is not None:
-            logo = logo.convert("RGBA")
-
-            mask = Image.new("L", logo.size, 0)
-            draw_mask = ImageDraw.Draw(mask)
-            draw_mask.ellipse((0, 0) + logo.size, fill=255)
-
-            logo = Image.composite(logo, Image.new("RGBA", logo.size, (0, 0, 0, 0)), mask)
-
-            logo_x = (width - logo.width) // 2
-            logo_y = int(height * 0.15)
-
-            img.paste(logo, (logo_x, logo_y), logo)
-
-    left_margin = int(width * 0.05)
-    text_spacing = int(height * 0.02)
-    max_text_width = width - 2 * left_margin
-
-    title_y = int(height * 0.62)
-    subtitle_y = int(height * 0.72)
-
-    normalized_title = _safe_truncate(title, 90)
-    normalized_subtitle = _safe_truncate(subtitle, 130)
-
-    draw_wrapped_text(
-        draw,
-        normalized_title,
-        title_font,
-        max_text_width,
-        title_y,
-        text_spacing,
-        text_color,
-        width,
-        align="center",
-        is_title=True,
-        height=height,
-    )
-
-    draw_wrapped_text(
-        draw,
-        normalized_subtitle,
-        subtitle_font,
-        max_text_width,
-        subtitle_y,
-        text_spacing,
-        text_color,
-        width,
-        align="center",
-    )
-
-    if not has_pro_subscription:
-        add_watermark(img, draw, width, height)
-
-    return create_image_buffer(img, output_format=output_format, quality=quality, max_kb=max_kb)
-
-
-def generate_job_classic_image(
-    profile_id,
-    site,
-    font,
-    title,
-    subtitle,
-    eyebrow,
-    image_url,
-    output_format="png",
-    quality=None,
-    max_kb=None,
-):
-    has_pro_subscription = check_if_profile_has_pro_subscription(profile_id)
-    width, height = get_image_dimensions(site)
-
-    background_image = _load_optional_image(image_url, width, height)
-    if background_image is not None:
-        img = background_image.convert("RGBA")
-    else:
-        img = Image.new("RGBA", (width, height), color=(24, 32, 46, 255))
-
-    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 130))
-    img = Image.alpha_composite(img, overlay)
-
-    draw = ImageDraw.Draw(img)
-
-    title, subtitle, eyebrow = _normalize_job_copy(title, subtitle, eyebrow)
-
-    title_font = load_font(font, int(height * 0.09))
-    subtitle_font = load_font(font, int(height * 0.05))
-    eyebrow_font = load_font(font, int(height * 0.032))
-
-    left_margin = int(width * 0.08)
-    current_y = int(height * 0.22)
-    max_text_width = int(width * 0.84)
-    text_spacing = int(height * 0.016)
-
-    text_color = (255, 255, 255)
-
-    if eyebrow:
-        current_y = _draw_wrapped_text_block(
-            draw,
-            eyebrow.upper(),
-            eyebrow_font,
-            max_text_width,
-            left_margin,
-            current_y,
-            text_color,
-            text_spacing,
-        )
-        current_y += int(height * 0.02)
-
-    if title:
-        current_y = _draw_wrapped_text_block(
-            draw,
-            title,
-            title_font,
-            max_text_width,
-            left_margin,
-            current_y,
-            text_color,
-            text_spacing,
-            is_title=True,
-            height=height,
-        )
-        current_y += int(height * 0.03)
-
-    if subtitle:
-        _draw_wrapped_text_block(
-            draw,
-            subtitle,
-            subtitle_font,
-            max_text_width,
-            left_margin,
-            current_y,
-            text_color,
-            text_spacing,
-        )
-
-    if not has_pro_subscription:
-        add_watermark(img, draw, width, height)
-
-    return create_image_buffer(img, output_format=output_format, quality=quality, max_kb=max_kb)
-
-
-def generate_job_logo_image(
-    profile_id,
-    site,
-    font,
-    title,
-    subtitle,
-    eyebrow,
-    image_url,
-    output_format="png",
-    quality=None,
-    max_kb=None,
-):
-    has_pro_subscription = check_if_profile_has_pro_subscription(profile_id)
-    width, height = get_image_dimensions(site)
-
-    img = Image.new("RGB", (width, height), color=(17, 24, 39))
-    draw = ImageDraw.Draw(img)
-
-    title, subtitle, eyebrow = _normalize_job_copy(title, subtitle, eyebrow)
-
-    title_font = load_font(font, int(height * 0.085))
-    subtitle_font = load_font(font, int(height * 0.05))
-    eyebrow_font = load_font(font, int(height * 0.03))
-
-    left_margin = int(width * 0.08)
-    max_text_width = int(width * 0.6)
-    text_spacing = int(height * 0.016)
-    current_y = int(height * 0.2)
-
-    if eyebrow:
-        current_y = _draw_wrapped_text_block(
-            draw,
-            eyebrow.upper(),
-            eyebrow_font,
-            max_text_width,
-            left_margin,
-            current_y,
-            (147, 197, 253),
-            text_spacing,
-        )
-        current_y += int(height * 0.015)
-
-    if title:
-        current_y = _draw_wrapped_text_block(
-            draw,
-            title,
-            title_font,
-            max_text_width,
-            left_margin,
-            current_y,
-            (255, 255, 255),
-            text_spacing,
-            is_title=True,
-            height=height,
-        )
-        current_y += int(height * 0.02)
-
-    if subtitle:
-        _draw_wrapped_text_block(
-            draw,
-            subtitle,
-            subtitle_font,
-            max_text_width,
-            left_margin,
-            current_y,
-            (209, 213, 219),
-            text_spacing,
-        )
-
-    logo_size = int(height * 0.42)
-    logo_x = width - logo_size - int(width * 0.08)
-    logo_y = int(height * 0.15)
-
-    logo = _load_optional_image(image_url, logo_size, logo_size)
-    if logo is not None:
-        logo = logo.convert("RGBA")
-
-        mask = Image.new("L", logo.size, 0)
-        draw_mask = ImageDraw.Draw(mask)
-        draw_mask.ellipse((0, 0) + logo.size, fill=255)
-        logo = Image.composite(logo, Image.new("RGBA", logo.size, (0, 0, 0, 0)), mask)
-
-        img.paste(logo, (logo_x, logo_y), logo)
-    else:
-        placeholder_box = [
-            logo_x,
-            logo_y,
-            logo_x + logo_size,
-            logo_y + logo_size,
-        ]
-        draw.ellipse(placeholder_box, outline=(75, 85, 99), width=4)
         draw.text(
-            (logo_x + int(logo_size * 0.24), logo_y + int(logo_size * 0.44)),
-            "LOGO",
-            fill=(107, 114, 128),
-            font=load_font(font, int(height * 0.03)),
+            (line_x, current_y),
+            line,
+            font=font,
+            fill=fill,
+            stroke_width=stroke_width,
+            stroke_fill=stroke_fill,
         )
-
-    if not has_pro_subscription:
-        add_watermark(img, draw, width, height)
-
-    return create_image_buffer(img, output_format=output_format, quality=quality, max_kb=max_kb)
+        current_y += line_height
 
 
-def generate_job_clean_image(
-    profile_id,
-    site,
-    font,
-    title,
-    subtitle,
-    eyebrow,
-    image_url,
-    output_format="png",
-    quality=None,
-    max_kb=None,
-):
-    has_pro_subscription = check_if_profile_has_pro_subscription(profile_id)
-    width, height = get_image_dimensions(site)
+def _draw_image(img: Image.Image, layer: dict[str, Any]) -> None:
+    remote = _load_remote_image(layer["url"])
+    resized = _resize_image(remote, int(layer["width"]), int(layer["height"]), layer.get("fit", "cover"))
+    resized = _apply_opacity(resized, float(layer.get("opacity", 1)))
+    _composite_clipped(img, resized, int(layer["x"]), int(layer["y"]))
 
-    img = Image.new("RGB", (width, height), color=(250, 250, 252))
-    draw = ImageDraw.Draw(img)
 
-    title, subtitle, eyebrow = _normalize_job_copy(title, subtitle, eyebrow)
+def render_canvas_image(image_data: dict[str, Any]):
+    width = int(image_data["width"])
+    height = int(image_data["height"])
+    img = Image.new("RGBA", (width, height), parse_color(image_data.get("background", "#ffffff")))
 
-    title_font = load_font(font, int(height * 0.082))
-    subtitle_font = load_font(font, int(height * 0.048))
-    eyebrow_font = load_font(font, int(height * 0.028))
+    logger.info(
+        "Generating canvas image",
+        profile_id=image_data.get("profile_id"),
+        width=width,
+        height=height,
+        layer_count=len(image_data.get("layers", [])),
+    )
 
-    accent_width = int(width * 0.018)
-    draw.rectangle([0, 0, accent_width, height], fill=(37, 99, 235))
+    for layer in image_data.get("layers", []):
+        kind = layer["kind"]
+        if kind == "rect":
+            _draw_rect(img, layer)
+        elif kind == "text":
+            _draw_text(img, layer)
+        elif kind == "image":
+            _draw_image(img, layer)
+        else:
+            raise ValueError(f"Unsupported layer kind: {kind}")
 
-    content_left = accent_width + int(width * 0.06)
-    max_text_width = int(width * 0.62)
-    text_spacing = int(height * 0.014)
-    current_y = int(height * 0.22)
+    if not check_if_profile_has_pro_subscription(image_data.get("profile_id")):
+        add_watermark(img, ImageDraw.Draw(img), width, height)
 
-    if eyebrow:
-        current_y = _draw_wrapped_text_block(
-            draw,
-            eyebrow.upper(),
-            eyebrow_font,
-            max_text_width,
-            content_left,
-            current_y,
-            (37, 99, 235),
-            text_spacing,
-        )
-        current_y += int(height * 0.012)
-
-    if title:
-        current_y = _draw_wrapped_text_block(
-            draw,
-            title,
-            title_font,
-            max_text_width,
-            content_left,
-            current_y,
-            (17, 24, 39),
-            text_spacing,
-            is_title=True,
-            height=height,
-        )
-        current_y += int(height * 0.018)
-
-    if subtitle:
-        _draw_wrapped_text_block(
-            draw,
-            subtitle,
-            subtitle_font,
-            max_text_width,
-            content_left,
-            current_y,
-            (55, 65, 81),
-            text_spacing,
-        )
-
-    logo_size = int(height * 0.28)
-    logo_x = width - logo_size - int(width * 0.08)
-    logo_y = int(height * 0.34)
-    logo = _load_optional_image(image_url, logo_size, logo_size)
-    if logo is not None:
-        img.paste(logo.convert("RGB"), (logo_x, logo_y))
-    else:
-        draw.rectangle(
-            [
-                logo_x,
-                logo_y,
-                logo_x + logo_size,
-                logo_y + logo_size,
-            ],
-            outline=(209, 213, 219),
-            width=3,
-        )
-
-    if not has_pro_subscription:
-        add_watermark(img, draw, width, height)
-
-    return create_image_buffer(img, output_format=output_format, quality=quality, max_kb=max_kb)
+    return create_image_buffer(
+        img,
+        output_format=image_data.get("format", "png"),
+        quality=image_data.get("quality"),
+        max_kb=image_data.get("max_kb"),
+    )

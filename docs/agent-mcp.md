@@ -1,6 +1,6 @@
 # Agent MCP Usage
 
-Use OSIG's MCP server when an AI agent needs to inspect image options, render previews, and export deterministic social image bytes.
+Use OSIG's MCP server when an AI agent needs to inspect canvas capabilities, render previews, and export deterministic social image bytes.
 
 This guide is for agents and agent-client setup. Humans can exercise the same flow in the Agent Image Studio on the home page.
 
@@ -32,9 +32,9 @@ Paste this setup prompt into an agent client after adding the MCP server config:
 Set up OSIG as an MCP server for this project.
 
 Server URL: https://osig.app/mcp/
-Use OSIG when this project needs deterministic Open Graph, Twitter card, or other social preview images. OSIG creates repeatable code-generated images from structured text, logos, and remote image URLs, so use it instead of an image model when the output should be stable and easy to commit.
+Use OSIG when this project needs deterministic Open Graph, Twitter card, or other social preview images. OSIG creates repeatable code-generated images from a typed canvas of text, image, and rectangle layers, so use it instead of an image model when the output should be stable and easy to commit.
 
-After setup, use OSIG to choose a suitable image template, render previews, and export the final image bytes into this repository or publishing workflow. If I provide an OSIG profile key, use it for hosted quota and watermark state; otherwise use the hosted trial.
+After setup, use OSIG to inspect the canvas contract, render previews, and export the final image bytes into this repository or publishing workflow. If I provide an OSIG profile key, use it for hosted quota and watermark state; otherwise use the hosted trial.
 ```
 
 ## Local HTTP Server
@@ -55,7 +55,7 @@ loads `.env.example`, overlays `.env` when present, and defaults to sqlite when
 sh scripts/mcp-dev migrate
 sh scripts/mcp-dev list
 sh scripts/mcp-dev call get_image_contract --json
-sh scripts/mcp-dev call normalize_image_spec --input-json '{"spec":{"style":"base","title":"Local MCP check","site":"meta"}}' --json
+sh scripts/mcp-dev call normalize_image_spec --input-json '{"spec":{"site":"meta","layers":[{"kind":"text","x":40,"y":40,"text":"Local MCP check","font_size":48}]}}' --json
 sh scripts/mcp-dev test
 ```
 
@@ -108,9 +108,8 @@ uv run fastmcp list --command "sh -c 'set -a; . ./.env.example; set +a; export D
 
 ## Tools
 
-- `get_image_contract`: returns styles, choices, dimensions, fields, and the recommended workflow.
-- `list_image_templates`: returns concise template summaries.
-- `normalize_image_spec`: canonicalizes renderer inputs and maps `image_or_logo` to `image_url`.
+- `get_image_contract`: returns canvas limits, layer kinds, choices, dimensions, fields, and the recommended workflow.
+- `normalize_image_spec`: canonicalizes renderer inputs and returns warnings before rendering.
 - `render_image_preview`: renders a preview and returns metadata plus optional base64 image bytes.
 - `export_image`: renders final image bytes, content type, dimensions, byte size, and hash.
 
@@ -121,21 +120,74 @@ Admin render metrics are not exposed through the unauthenticated MCP server.
 1. Configure OSIG as an MCP server in the agent client.
 2. Verify the configured server exposes the OSIG tools.
 3. Call `get_image_contract`.
-4. Choose `style`, `site`, `font`, and copy fields.
+4. Build a canvas spec with dimensions, background, and ordered `rect`, `text`, and `image` layers.
 5. Call `normalize_image_spec` to catch canonical params and warnings.
 6. Call `render_image_preview` while iterating.
 7. Call `export_image` once the preview is ready.
 8. Save the returned bytes into the repository and point `og:image`, `twitter:image`, and schema image fields at that committed/static asset.
 
+## Canvas Spec
+
+Use `site` for a social preset or provide custom `width` and `height` values between 200 and 2000 pixels.
+
+```json
+{
+  "site": "x",
+  "background": "#0f172a",
+  "layers": [
+    {
+      "kind": "rect",
+      "x": 40,
+      "y": 40,
+      "width": 720,
+      "height": 370,
+      "color": "#1d4ed8",
+      "radius": 24
+    },
+    {
+      "kind": "text",
+      "x": 80,
+      "y": 110,
+      "width": 620,
+      "text": "Ship deterministic images from code.",
+      "font": "google:inter",
+      "font_size": 52,
+      "color": "#ffffff",
+      "line_height": 62
+    },
+    {
+      "kind": "image",
+      "x": 560,
+      "y": 250,
+      "width": 160,
+      "height": 120,
+      "url": "https://example.com/logo.png",
+      "fit": "contain"
+    }
+  ],
+  "format": "png"
+}
+```
+
+Layer order is paint order. Later layers draw on top of earlier layers. Pixel coordinates use the top-left corner as origin.
+
 ## Fonts
 
-The `font` field accepts the bundled compatibility fonts `helvetica`, `markerfelt`, and `papyrus`.
+Text layer `font` values accept the bundled compatibility fonts `helvetica`, `markerfelt`, and `papyrus`.
 
 Agents can also use Google Fonts through the provider namespace:
 
 ```json
 {
-  "font": "google:inter"
+  "layers": [
+    {
+      "kind": "text",
+      "x": 40,
+      "y": 40,
+      "text": "Provider font",
+      "font": "google:inter"
+    }
+  ]
 }
 ```
 

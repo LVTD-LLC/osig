@@ -20,6 +20,29 @@ def _tiny_png_buffer():
     return buffer
 
 
+def _canvas_spec(**overrides):
+    spec = {
+        "width": 800,
+        "height": 450,
+        "background": "#0f172a",
+        "layers": [
+            {"kind": "rect", "x": 40, "y": 40, "width": 720, "height": 370, "color": "#1d4ed8", "radius": 24},
+            {
+                "kind": "text",
+                "x": 80,
+                "y": 120,
+                "width": 620,
+                "text": "Canvas MCP",
+                "font": "helvetica",
+                "font_size": 56,
+                "color": "#ffffff",
+            },
+        ],
+    }
+    spec.update(overrides)
+    return spec
+
+
 async def _call_tool(name, arguments=None, raise_on_error=True):
     from agent_images.mcp import create_mcp
 
@@ -40,52 +63,50 @@ def test_mcp_lists_agent_image_tools():
 
     assert {
         "get_image_contract",
-        "list_image_templates",
         "normalize_image_spec",
         "render_image_preview",
         "export_image",
     }.issubset(tool_names)
+    assert "list_image_templates" not in tool_names
     assert "build_signed_image_url" not in tool_names
     assert "list_recent_generated_images" not in tool_names
 
 
-def test_get_image_contract_describes_agent_workflow():
+def test_get_image_contract_describes_canvas_workflow():
     result = _run(_call_tool("get_image_contract"))
 
     assert result.data["product"] == "OSIG Agent Images"
-    assert "export_image" in " ".join(result.data["workflow"])
-    assert result.data["choices"]["style"] == ["base", "logo", "job_classic", "job_logo", "job_clean"]
+    assert result.data["purpose"] == "Deterministic canvas images for AI agents."
+    assert result.data["canvas"]["default_site"] == "x"
+    assert result.data["canvas"]["custom_dimensions"]["max_width"] == 2000
+    assert set(result.data["layer_kinds"]) == {"rect", "text", "image"}
+    assert "style" not in result.data["choices"]
     assert "google" in result.data["choices"]["font_provider"]
     assert "google:inter" in result.data["choices"]["font"]
     assert result.data["font_providers"]["google"]["font_value_format"] == "google:<family-slug>"
+    assert "export_image" in " ".join(result.data["workflow"])
 
 
 @pytest.mark.django_db(transaction=True)
 def test_trial_mcp_core_tools_work_without_authentication_or_key(monkeypatch):
     import agent_images.services as agent_services
 
-    monkeypatch.setattr(agent_services, "generate_image_router", lambda params: _tiny_png_buffer())
+    monkeypatch.setattr(agent_services, "render_canvas_image", lambda params: _tiny_png_buffer())
 
     async def run_test():
         from agent_images.mcp import create_mcp
 
         async with Client(create_mcp()) as client:
             contract = await client.call_tool("get_image_contract", {})
-            normalized = await client.call_tool(
-                "normalize_image_spec",
-                {"spec": {"style": "base", "title": "Unauthed trial"}},
-            )
+            normalized = await client.call_tool("normalize_image_spec", {"spec": _canvas_spec()})
             preview = await client.call_tool(
                 "render_image_preview",
                 {
-                    "spec": {"style": "base", "title": "Unauthed trial"},
+                    "spec": _canvas_spec(),
                     "include_image_base64": False,
                 },
             )
-            exported = await client.call_tool(
-                "export_image",
-                {"spec": {"style": "base", "title": "Unauthed trial"}},
-            )
+            exported = await client.call_tool("export_image", {"spec": _canvas_spec()})
 
         return contract.data, normalized.data, preview.data, exported.data
 
@@ -95,34 +116,48 @@ def test_trial_mcp_core_tools_work_without_authentication_or_key(monkeypatch):
     assert contract["access"]["authentication_required"] is False
     assert "key" not in normalized["spec"]
     assert "profile_id" not in normalized["render_params"]
+    assert normalized["output"]["width"] == 800
+    assert normalized["output"]["height"] == 450
     assert preview["sha256"]
     assert preview["content_type"] == "image/png"
     assert exported["image_base64"]
 
 
 @pytest.mark.django_db(transaction=True)
-def test_normalize_image_spec_maps_logo_alias_to_render_params():
+def test_normalize_image_spec_supports_custom_canvas_and_profile_key():
     user = User.objects.create_user(username="normalizer", email="normalizer@example.com", password="pass123")
 
     result = _run(
         _call_tool(
             "normalize_image_spec",
             {
-                "spec": {
-                    "key": user.profile.key,
-                    "style": "job_logo",
-                    "title": "Senior Django Engineer",
-                    "image_or_logo": "https://example.com/logo.png",
-                }
+                "spec": _canvas_spec(
+                    key=user.profile.key,
+                    width=640,
+                    height=360,
+                    layers=[
+                        {
+                            "kind": "text",
+                            "x": 24,
+                            "y": 32,
+                            "width": 500,
+                            "text": "Precise placement",
+                            "font_size": 42,
+                            "color": "#111827",
+                        }
+                    ],
+                )
             },
         )
     )
 
-    assert result.data["spec"]["image_url"] == "https://example.com/logo.png"
+    assert result.data["spec"]["width"] == 640
+    assert result.data["spec"]["height"] == 360
+    assert result.data["spec"]["layers"][0]["kind"] == "text"
     assert result.data["spec"]["key"] == user.profile.key
     assert "profile_id" not in result.data["render_params"]
-    assert result.data["output"]["width"] == 800
-    assert result.data["output"]["height"] == 450
+    assert result.data["output"]["width"] == 640
+    assert result.data["output"]["height"] == 360
 
 
 @pytest.mark.django_db(transaction=True)
@@ -132,17 +167,7 @@ def test_normalize_image_spec_uses_authenticated_profile_key(monkeypatch):
     user = User.objects.create_user(username="hosted", email="hosted@example.com", password="pass123")
     monkeypatch.setattr(agent_mcp, "_get_http_profile", lambda: user.profile)
 
-    result = _run(
-        _call_tool(
-            "normalize_image_spec",
-            {
-                "spec": {
-                    "style": "base",
-                    "title": "Hosted MCP",
-                }
-            },
-        )
-    )
+    result = _run(_call_tool("normalize_image_spec", {"spec": _canvas_spec()}))
 
     assert result.data["spec"]["key"] == user.profile.key
     assert "profile_id" not in result.data["render_params"]
@@ -156,36 +181,20 @@ def test_normalize_image_spec_rejects_mismatched_authenticated_key(monkeypatch):
     monkeypatch.setattr(agent_mcp, "_get_http_profile", lambda: user.profile)
 
     with pytest.raises(ToolError):
-        _run(
-            _call_tool(
-                "normalize_image_spec",
-                {
-                    "spec": {
-                        "key": "other-key",
-                        "style": "base",
-                        "title": "Hosted MCP",
-                    }
-                },
-            )
-        )
+        _run(_call_tool("normalize_image_spec", {"spec": _canvas_spec(key="other-key")}))
 
 
 @pytest.mark.django_db(transaction=True)
 def test_render_image_preview_returns_metadata_and_optional_image(monkeypatch):
     import agent_images.services as agent_services
 
-    monkeypatch.setattr(agent_services, "generate_image_router", lambda params: _tiny_png_buffer())
+    monkeypatch.setattr(agent_services, "render_canvas_image", lambda params: _tiny_png_buffer())
 
     result = _run(
         _call_tool(
             "render_image_preview",
             {
-                "spec": {
-                    "style": "base",
-                    "site": "meta",
-                    "title": "Preview title",
-                    "format": "png",
-                },
+                "spec": _canvas_spec(site="meta", width=None, height=None, format="png"),
                 "include_image_base64": True,
             },
         )
@@ -197,6 +206,8 @@ def test_render_image_preview_returns_metadata_and_optional_image(monkeypatch):
     assert data["content_type"] == "image/png"
     assert data["width"] == 16
     assert data["height"] == 16
+    assert data["output"]["width"] == 600
+    assert data["output"]["height"] == 315
     assert decoded.startswith(b"\x89PNG")
     assert data["data_uri"].startswith("data:image/png;base64,")
 
@@ -205,20 +216,9 @@ def test_render_image_preview_returns_metadata_and_optional_image(monkeypatch):
 def test_export_image_always_returns_base64_payload(monkeypatch):
     import agent_images.services as agent_services
 
-    monkeypatch.setattr(agent_services, "generate_image_router", lambda params: _tiny_png_buffer())
+    monkeypatch.setattr(agent_services, "render_canvas_image", lambda params: _tiny_png_buffer())
 
-    result = _run(
-        _call_tool(
-            "export_image",
-            {
-                "spec": {
-                    "style": "logo",
-                    "title": "Narrative",
-                    "subtitle": "Founding Engineer",
-                },
-            },
-        )
-    )
+    result = _run(_call_tool("export_image", {"spec": _canvas_spec()}))
 
     assert result.data["image_base64"]
     assert result.data["extension"] == "png"
@@ -229,20 +229,17 @@ def test_export_image_always_returns_base64_payload(monkeypatch):
 def test_render_image_preview_raises_render_errors(monkeypatch):
     import agent_images.services as agent_services
 
-    def unavailable_router(params):
+    def unavailable_renderer(params):
         raise ValueError("invalid render input")
 
-    monkeypatch.setattr(agent_services, "generate_image_router", unavailable_router)
+    monkeypatch.setattr(agent_services, "render_canvas_image", unavailable_renderer)
 
     with pytest.raises(ToolError):
         _run(
             _call_tool(
                 "render_image_preview",
                 {
-                    "spec": {
-                        "style": "base",
-                        "title": "Preview title",
-                    },
+                    "spec": _canvas_spec(),
                     "include_image_base64": False,
                 },
             )

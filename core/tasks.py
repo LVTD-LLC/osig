@@ -6,7 +6,7 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import transaction
 
-from core.image_styles import generate_image_router
+from core.image_styles import render_canvas_image
 from core.models import Image
 from osig.utils import get_osig_logger
 
@@ -40,7 +40,7 @@ def regenerate_and_update_image(image_id, image_data):
     try:
         image_obj = Image.objects.select_for_update().get(id=image_id)
 
-        new_image = generate_image_router(image_data)
+        new_image = render_canvas_image(image_data)
         old_image_path = image_obj.generated_image.name
 
         if not default_storage.exists(old_image_path):
