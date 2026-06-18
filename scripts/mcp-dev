@@ -54,8 +54,7 @@ shift || true
 
 case "$command_name" in
     list)
-        load_env
-        uv run fastmcp list --command "sh scripts/mcp-dev stdio"
+        uv run fastmcp list --command "sh '$ROOT_DIR/scripts/mcp-dev' stdio"
         ;;
     call)
         if [ "$#" -lt 1 ]; then
@@ -64,8 +63,7 @@ case "$command_name" in
         fi
         target="$1"
         shift
-        load_env
-        uv run fastmcp call --command "sh scripts/mcp-dev stdio" --target "$target" "$@"
+        uv run fastmcp call --command "sh '$ROOT_DIR/scripts/mcp-dev' stdio" --target "$target" "$@"
         ;;
     inspect)
         load_env

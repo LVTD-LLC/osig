@@ -24,6 +24,9 @@ mcp-list:
 	sh scripts/mcp-dev list
 
 mcp-call:
+ifndef TOOL
+	$(error TOOL is required, e.g.: make mcp-call TOOL=get_image_contract ARGS=--json)
+endif
 	sh scripts/mcp-dev call $(TOOL) $(ARGS)
 
 mcp-inspect:
