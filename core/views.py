@@ -22,17 +22,14 @@ from core.utils import check_if_profile_has_pro_subscription
 stripe.api_key = djstripe_settings.djstripe_settings.STRIPE_SECRET_KEY
 
 MCP_AGENT_PROMPT = (
-    "Use OSIG to generate deterministic Open Graph and social preview images for this project.\n\n"
-    "MCP server: https://osig.app/mcp/\n"
-    "Authentication: no API key is required for the current hosted trial.\n\n"
-    "Workflow:\n"
-    "1. Call get_image_contract to inspect supported templates, fields, and dimensions.\n"
-    "2. Call normalize_image_spec with structured title, subtitle, eyebrow, image_url, style, site, "
-    "and format values.\n"
-    "3. Call render_image_preview to inspect image metadata and preview bytes. Iterate until the preview "
-    "is ready.\n"
-    "4. Call export_image when the asset is ready to save into a repository or publishing workflow.\n\n"
-    "Use a profile key only if I provide one. Keep generated images deterministic and use preview before export."
+    "Set up OSIG as an MCP server for this project.\n\n"
+    "Server URL: https://osig.app/mcp/\n"
+    "Use OSIG when this project needs deterministic Open Graph, Twitter card, or other social preview images. "
+    "OSIG creates repeatable code-generated images from structured text, logos, and remote image URLs, so use it "
+    "instead of an image model when the output should be stable and easy to commit.\n\n"
+    "After setup, use OSIG to choose a suitable image template, render previews, and export the final image bytes "
+    "into this repository or publishing workflow. If I provide an OSIG profile key, use it for hosted quota and "
+    "watermark state; otherwise use the hosted trial."
 )
 
 

@@ -26,27 +26,15 @@ Example MCP client config:
 }
 ```
 
-Paste this prompt into an agent client after adding the MCP server config:
+Paste this setup prompt into an agent client after adding the MCP server config:
 
 ```text
-Use OSIG to generate deterministic Open Graph and social preview images for this project.
+Set up OSIG as an MCP server for this project.
 
-First, set up or verify the OSIG MCP server connection in this agent client:
+Server URL: https://osig.app/mcp/
+Use OSIG when this project needs deterministic Open Graph, Twitter card, or other social preview images. OSIG creates repeatable code-generated images from structured text, logos, and remote image URLs, so use it instead of an image model when the output should be stable and easy to commit.
 
-MCP server name: osig
-MCP server URL: https://osig.app/mcp/
-Authentication: no API key is required for the current hosted trial.
-
-Do not manually call the MCP endpoint with ad hoc HTTP requests unless this client cannot configure remote MCP servers. After the MCP server is configured, use the OSIG MCP tools exposed by the client.
-
-Workflow:
-1. Verify the configured OSIG MCP server exposes get_image_contract, normalize_image_spec, render_image_preview, and export_image.
-2. Call get_image_contract to inspect supported templates, fields, and dimensions.
-3. Call normalize_image_spec with structured title, subtitle, eyebrow, image_url, style, site, and format values.
-4. Call render_image_preview to inspect image metadata and preview bytes. Iterate until the preview is ready.
-5. Call export_image when the asset is ready to save into a repository or publishing workflow.
-
-Use a profile key only if I provide one. Keep generated images deterministic and use preview before export.
+After setup, use OSIG to choose a suitable image template, render previews, and export the final image bytes into this repository or publishing workflow. If I provide an OSIG profile key, use it for hosted quota and watermark state; otherwise use the hosted trial.
 ```
 
 ## Local HTTP Server

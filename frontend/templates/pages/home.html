@@ -62,19 +62,24 @@
       </div>
       <div class="landing-prompt-header">
         <p>AI prompt</p>
-        <h2 id="agent-prompt-title">Paste this into your coding agent.</h2>
+        <h2 id="agent-prompt-title">Copy the setup prompt.</h2>
       </div>
-      <label for="mcp-agent-prompt" class="sr-only">AI agent prompt for using OSIG</label>
+      <p id="agent-prompt-copy-description" class="landing-prompt-instruction">
+        Paste it into your coding agent and ask the agent to set up OSIG as an MCP server for deterministic Open Graph and social preview images.
+      </p>
       <textarea
         id="mcp-agent-prompt"
         data-clipboard-target="source"
+        aria-hidden="true"
+        tabindex="-1"
         readonly
-        rows="14"
+        class="sr-only"
       >{{ mcp_agent_prompt }}</textarea>
       <button
         type="button"
         data-clipboard-target="button"
         data-action="clipboard#copy"
+        aria-describedby="agent-prompt-copy-description"
         class="landing-copy-button"
       >
         Copy AI prompt

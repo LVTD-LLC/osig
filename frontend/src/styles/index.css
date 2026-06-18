@@ -863,6 +863,13 @@
     line-height: 0.92;
   }
 
+  .landing-prompt-instruction {
+    margin: 0;
+    color: var(--landing-muted);
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
   .landing-prompt textarea {
     min-height: clamp(21rem, 42vh, 30rem);
     resize: vertical;
