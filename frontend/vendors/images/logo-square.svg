@@ -1,17 +1,8 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg width="100%" height="100%" viewBox="0 0 500 500" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
-    <g transform="matrix(1.161,0,0,1.161,-80.5013,-80.4995)">
-        <circle cx="284.674" cy="284.663" r="215.326" style="fill:rgb(235,235,235);fill-opacity:0;"/>
-    </g>
-    <g id="logo.svg" transform="matrix(2.81177,0,0,2.81177,250,250)">
-        <g transform="matrix(1,0,0,1,-64,-64)">
-            <path d="M124,26C124,20.5 119.5,16 114,16L14,16C8.5,16 4,20.5 4,26L4,104C4,109.5 8.5,114 14,114L114,114C119.5,114 124,109.5 124,104L124,26Z" style="fill:white;fill-rule:nonzero;"/>
-            <circle cx="36" cy="48" r="15" style="fill:rgb(228,228,231);"/>
-            <path d="M34,114C44.9,74.5 76.2,58 124,67.6L124,104C124,109.5 119.5,114 114,114L34,114Z" style="fill:rgb(239,222,151);fill-rule:nonzero;"/>
-            <path d="M80.5,114L114,114C119.5,114 124,109.5 124,104L124,87.6C96,75 79,99 80.5,114Z" style="fill:rgb(181,168,9);fill-rule:nonzero;"/>
-            <path d="M36,66C31.4,66 26.8,64.2 23.3,60.7C16.3,53.7 16.3,42.3 23.3,35.2C30.3,28.2 41.7,28.2 48.8,35.2C55.8,42.2 55.8,53.6 48.8,60.7C45.2,64.2 40.6,66 36,66ZM36,36C32.9,36 29.9,37.2 27.5,39.5C22.8,44.2 22.8,51.8 27.5,56.5C32.2,61.2 39.8,61.2 44.5,56.5C49.2,51.8 49.2,44.2 44.5,39.5C42.1,37.2 39.1,36 36,36Z" style="fill:rgb(68,75,84);fill-rule:nonzero;"/>
-            <path d="M123.4,70.5C123.6,70.5 123.8,70.6 124,70.6C125.7,70.6 127,69.3 127,67.6L127,26C127,18.8 121.2,13 114,13L14,13C6.8,13 1,18.8 1,26L1,104C1,111.2 6.8,117 14,117L114,117C121.2,117 127,111.2 127,104L127,87.6C127,85.9 125.7,84.6 124,84.6C122.3,84.6 121,85.9 121,87.6L121,104C121,107.9 117.9,111 114,111L38,111C49.5,75.6 78.9,61.6 123.4,70.5ZM31.8,111L14,111C10.1,111 7,107.9 7,104L7,26C7,22.1 10.1,19 14,19L114,19C117.9,19 121,22.1 121,26L121,63.9C74.9,55.9 43.4,72.5 31.8,111Z" style="fill:rgb(68,75,84);fill-rule:nonzero;"/>
-        </g>
-    </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" role="img" aria-labelledby="logo-square-title">
+  <title id="logo-square-title">OSIG logo</title>
+  <rect width="500" height="500" rx="110" fill="#101827"/>
+  <rect x="110" y="135" width="280" height="230" rx="40" fill="none" stroke="#f8fafc" stroke-width="40"/>
+  <path d="M130 170h40v160h-40z" fill="#2f6df6"/>
+  <path d="M225 210h110M225 290h70" stroke="#f8fafc" stroke-width="30" stroke-linecap="round"/>
+  <circle cx="360" cy="345" r="35" fill="#2f6df6"/>
 </svg>
