@@ -11,6 +11,16 @@ from core.models import RenderAttempt
 from core.render_observability import RenderErrorType
 
 
+def _canvas_spec(**overrides):
+    spec = {
+        "width": 800,
+        "height": 450,
+        "layers": [{"kind": "text", "x": 40, "y": 40, "text": "Reliable canvas"}],
+    }
+    spec.update(overrides)
+    return spec
+
+
 def _tiny_png_buffer():
     buffer = io.BytesIO()
     Image.new("RGB", (16, 16), color="white").save(buffer, format="PNG")
@@ -31,9 +41,9 @@ def test_retries_transient_render_failures(client, monkeypatch):
             raise requests.exceptions.Timeout("network timeout")
         return _tiny_png_buffer()
 
-    monkeypatch.setattr(agent_services, "generate_image_router", flaky_router)
+    monkeypatch.setattr(agent_services, "render_canvas_image", flaky_router)
 
-    payload = render_image(ImageSpec(style="base", title="Retry test"))
+    payload = render_image(ImageSpec.model_validate(_canvas_spec()))
 
     assert payload["content_type"] == "image/png"
     assert call_count["value"] == 2
@@ -56,10 +66,10 @@ def test_does_not_retry_non_transient_errors(client, monkeypatch):
         call_count["value"] += 1
         raise ValueError("invalid payload")
 
-    monkeypatch.setattr(agent_services, "generate_image_router", invalid_router)
+    monkeypatch.setattr(agent_services, "render_canvas_image", invalid_router)
 
     with pytest.raises(ImageRenderFailed) as exc_info:
-        render_image(ImageSpec(style="base", title="Validation failure"))
+        render_image(ImageSpec.model_validate(_canvas_spec()))
 
     assert exc_info.value.error_type == RenderErrorType.VALIDATION_ERROR
     assert call_count["value"] == 1
@@ -83,10 +93,10 @@ def test_successful_render_does_not_retry_when_observability_recording_fails(cli
     def failing_record_attempt(**kwargs):
         raise RuntimeError("database unavailable")
 
-    monkeypatch.setattr(agent_services, "generate_image_router", router)
+    monkeypatch.setattr(agent_services, "render_canvas_image", router)
     monkeypatch.setattr(agent_services, "record_render_attempt", failing_record_attempt)
 
-    payload = render_image(ImageSpec(style="base", title="Successful render"))
+    payload = render_image(ImageSpec.model_validate(_canvas_spec()))
 
     assert payload["content_type"] == "image/png"
     assert call_count["value"] == 1
@@ -97,13 +107,13 @@ def test_render_metrics_dashboard_returns_fail_rate_and_p95(client):
     admin_user = User.objects.create_superuser(username="admin", email="admin@example.com", password="pass123")
     profile = admin_user.profile
 
-    RenderAttempt.objects.create(profile=profile, key=profile.key, style="base", success=True, duration_ms=100)
-    RenderAttempt.objects.create(profile=profile, key=profile.key, style="base", success=True, duration_ms=200)
-    RenderAttempt.objects.create(profile=profile, key=profile.key, style="base", success=True, duration_ms=300)
+    RenderAttempt.objects.create(profile=profile, key=profile.key, renderer="canvas", success=True, duration_ms=100)
+    RenderAttempt.objects.create(profile=profile, key=profile.key, renderer="canvas", success=True, duration_ms=200)
+    RenderAttempt.objects.create(profile=profile, key=profile.key, renderer="canvas", success=True, duration_ms=300)
     RenderAttempt.objects.create(
         profile=profile,
         key=profile.key,
-        style="base",
+        renderer="canvas",
         success=False,
         duration_ms=150,
         error_type=RenderErrorType.TRANSIENT_UPSTREAM_FETCH,

@@ -18,14 +18,14 @@
   {% absolute_static "vendors/images/logo-square.png" as logo_square_url %}
   {% og_image_url image_url=logo_square_url as default_og_image %}
   <title>OSIG | Agent Image Infrastructure</title>
-  <meta name="description" content="Generate deterministic Open Graph and social preview images through MCP, structured specs, and code-rendered templates." />
+  <meta name="description" content="Generate deterministic Open Graph and social preview images through MCP, typed canvas specs, and code-rendered layers." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="{{ home_url }}" />
 
   <meta property="og:type" content="website" />
   <meta property="og:title" content="OSIG | Agent Image Infrastructure" />
   <meta property="og:url" content="{{ home_url }}" />
-  <meta property="og:description" content="Generate deterministic Open Graph and social preview images through MCP, structured specs, and code-rendered templates." />
+  <meta property="og:description" content="Generate deterministic Open Graph and social preview images through MCP, typed canvas specs, and code-rendered layers." />
   <meta property="og:image" content="{{ default_og_image }}" />
   <meta property="og:locale" content="en_US" />
 
@@ -33,7 +33,7 @@
   <meta name="twitter:creator" content="@rasulkireev" />
   <meta name="twitter:site" content="@rasulkireev" />
   <meta name="twitter:title" content="OSIG | Agent Image Infrastructure" />
-  <meta name="twitter:description" content="Generate deterministic Open Graph and social preview images through MCP, structured specs, and code-rendered templates." />
+  <meta name="twitter:description" content="Generate deterministic Open Graph and social preview images through MCP, typed canvas specs, and code-rendered layers." />
   <meta name="twitter:image" content="{{ default_og_image }}" />
   {% endblock meta %}
 
@@ -77,7 +77,7 @@
       "alternateName": "Open Source Image Generator",
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "Web",
-      "description": "Generate deterministic Open Graph and social preview images through MCP, structured specs, and code-rendered templates.",
+      "description": "Generate deterministic Open Graph and social preview images through MCP, typed canvas specs, and code-rendered layers.",
       "url": "{{ home_url }}",
       "image": "{{ default_og_image|safe }}",
       "thumbnailUrl": "{{ logo_url }}",

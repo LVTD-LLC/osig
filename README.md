@@ -1,13 +1,13 @@
 # OSIG
 
-OSIG renders deterministic Open Graph and Twitter/X preview images from structured image specs.
+OSIG renders deterministic Open Graph and Twitter/X preview images from typed canvas specs.
 
 It has two primary usage paths:
 
 - AI agent usage through MCP: see [docs/agent-mcp.md](docs/agent-mcp.md)
 - Human preview/export usage through the Agent Image Studio on the home page.
 
-The legacy `/g` URL generator has been removed. Agents should render previews and export image bytes through MCP or the Studio API instead of publishing query-string image URLs.
+The legacy `/g` URL generator and fixed template contract have been removed. Agents should render previews and export image bytes through MCP or the Studio API instead of publishing query-string image URLs.
 
 Hosted production usage should be paid and bounded; the open source app remains self-hostable.
 
@@ -86,7 +86,7 @@ Do not expose private/admin MCP tools while this remains public. Profile keys ma
 
 ## Roadmap
 
-- Add more image styles.
+- Add richer canvas primitives only when they stay deterministic and safe for hosted MCP.
 - Add more font providers and provider font examples.
 - Add more social/site presets.
 - Reintroduce mandatory MCP auth before paid hosted production access.

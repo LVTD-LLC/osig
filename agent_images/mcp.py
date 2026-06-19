@@ -9,13 +9,7 @@ from fastmcp.server.dependencies import get_http_request
 from core.mcp_auth import authenticate_mcp_headers
 from core.models import Profile
 
-from .services import (
-    ImageSpec,
-    image_contract,
-    list_templates,
-    normalize_image_spec as normalize_image_spec_service,
-    render_image,
-)
+from .services import ImageSpec, image_contract, normalize_image_spec as normalize_image_spec_service, render_image
 
 
 def _get_http_profile() -> Profile | None:
@@ -31,7 +25,7 @@ def create_mcp() -> FastMCP:
     mcp = FastMCP(
         "OSIG Agent Images MCP",
         instructions=(
-            "Use these tools to discover deterministic social image templates, validate structured image specs, "
+            "Use these tools to discover deterministic canvas image capabilities, validate structured scene specs, "
             "render previews, and export image bytes for repository updates. The hosted OSIG MCP endpoint is "
             "currently an unauthenticated trial; use a profile key only when the user provides one."
         ),
@@ -40,17 +34,12 @@ def create_mcp() -> FastMCP:
 
     @mcp.tool(timeout=5)
     def get_image_contract() -> dict[str, Any]:
-        """Return available templates, fields, choices, dimensions, and the agent workflow."""
+        """Return canvas limits, layer schemas, choices, dimensions, and the agent workflow."""
         return image_contract()
 
     @mcp.tool(timeout=5)
-    def list_image_templates() -> dict[str, Any]:
-        """Return concise template summaries for choosing the right image layout."""
-        return {"templates": list_templates()}
-
-    @mcp.tool(timeout=5)
     def normalize_image_spec(spec: ImageSpec) -> dict[str, Any]:
-        """Validate and normalize a structured OSIG image spec without rendering it."""
+        """Validate and normalize a structured OSIG canvas spec without rendering it."""
         close_old_connections()
         try:
             normalized = normalize_image_spec_service(spec, profile=_get_http_profile())

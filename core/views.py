@@ -8,16 +8,15 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
-from django.http import Http404, HttpResponse
+from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
-from django.views.generic import DetailView, ListView, TemplateView, UpdateView
+from django.views.generic import TemplateView, UpdateView
 from djstripe import models as djstripe_models, settings as djstripe_settings
 from PIL import Image
 
 from core.forms import ProfileUpdateForm
-from core.models import BlogPost, Profile
-from core.utils import check_if_profile_has_pro_subscription
+from core.models import Profile
 
 stripe.api_key = djstripe_settings.djstripe_settings.STRIPE_SECRET_KEY
 
@@ -25,9 +24,9 @@ MCP_AGENT_PROMPT = (
     "Set up OSIG as an MCP server for this project.\n\n"
     "Server URL: https://osig.app/mcp/\n"
     "Use OSIG when this project needs deterministic Open Graph, Twitter card, or other social preview images. "
-    "OSIG creates repeatable code-generated images from structured text, logos, and remote image URLs, so use it "
+    "OSIG creates repeatable code-generated images from a typed canvas of text, image, and rectangle layers, so use it "
     "instead of an image model when the output should be stable and easy to commit.\n\n"
-    "After setup, use OSIG to choose a suitable image template, render previews, and export the final image bytes "
+    "After setup, use OSIG to inspect the canvas contract, render previews, and export the final image bytes "
     "into this repository or publishing workflow. If I provide an OSIG profile key, use it for hosted quota and "
     "watermark state; otherwise use the hosted trial."
 )
@@ -47,58 +46,6 @@ class HomeView(TemplateView):
             messages.error(self.request, "Something went wrong with the payment.")
 
         return context
-
-
-class PricingView(TemplateView):
-    template_name = "pages/pricing.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        if self.request.user.is_authenticated:
-            try:
-                profile = self.request.user.profile
-                context["has_pro_subscription"] = check_if_profile_has_pro_subscription(profile.id)
-            except Profile.DoesNotExist:
-                context["has_pro_subscription"] = False
-        else:
-            context["has_pro_subscription"] = False
-
-        return context
-
-
-class HowToView(TemplateView):
-    template_name = "pages/how-to.html"
-
-
-class BlogView(ListView):
-    model = BlogPost
-    template_name = "blog/blog_posts.html"
-    context_object_name = "blog_posts"
-    ordering = ["-created_at"]
-
-    def get_queryset(self):
-        from core.choices import BlogPostStatus
-
-        return BlogPost.objects.filter(status=BlogPostStatus.PUBLISHED).order_by("-created_at")
-
-
-class BlogPostView(DetailView):
-    model = BlogPost
-    template_name = "blog/blog_post.html"
-    context_object_name = "blog_post"
-
-    def get_queryset(self):
-        from core.choices import BlogPostStatus
-
-        return BlogPost.objects.filter(status=BlogPostStatus.PUBLISHED)
-
-    def get_object(self, queryset=None):
-        queryset = queryset or self.get_queryset()
-        blog_post = queryset.filter(slug=self.kwargs["slug"]).order_by("-updated_at", "-created_at").first()
-        if blog_post is None:
-            raise Http404("No published blog post found matching the query")
-        return blog_post
 
 
 class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):

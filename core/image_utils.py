@@ -1,9 +1,8 @@
 import io
 import os
 
-import requests
 from django.conf import settings
-from PIL import Image, ImageFont
+from PIL import ImageFont
 
 from core.font_providers import is_provider_font, normalize_font_name, provider_font_path
 from osig.utils import get_osig_logger
@@ -36,42 +35,6 @@ def add_watermark(img, draw, width, height):
 
     # Draw the watermark
     draw.text((x, y), watermark_text, font=watermark_font, fill=watermark_color)
-
-
-def draw_wrapped_text(
-    draw, text, font, max_width, y_position, text_spacing, text_color, width, align="left", is_title=False, height=None
-):
-    words = text.split()
-    lines = []
-    current_line = []
-
-    for word in words:
-        test_line = " ".join(current_line + [word])
-        bbox = font.getbbox(test_line)
-        if bbox[2] <= max_width:
-            current_line.append(word)
-        else:
-            lines.append(" ".join(current_line))
-            current_line = [word]
-
-    if current_line:
-        lines.append(" ".join(current_line))
-
-    for line in lines:
-        bbox = font.getbbox(line)
-        left_margin = (width - bbox[2]) // 2 if align == "center" else 0
-
-        if is_title and height:
-            bold_offset = int(height * 0.002)
-            for offset_x in range(-bold_offset - 1, bold_offset + 1):
-                for offset_y in range(-bold_offset, bold_offset + 1):
-                    draw.text((left_margin + offset_x, y_position + offset_y), line, font=font, fill=text_color)
-        else:
-            draw.text((left_margin, y_position), line, font=font, fill=text_color)
-
-        y_position += bbox[3] - bbox[1] + text_spacing
-
-    return y_position
 
 
 def load_font(font, size):
@@ -130,11 +93,3 @@ def create_image_buffer(img, output_format="png", quality=None, max_kb=None):
 
     buffer.seek(0)
     return buffer
-
-
-def load_and_resize_image(image_url, width, height):
-    timeout_seconds = getattr(settings, "OSIG_IMAGE_FETCH_TIMEOUT_SECONDS", 8)
-    response = requests.get(image_url, timeout=timeout_seconds)
-    response.raise_for_status()
-    img = Image.open(io.BytesIO(response.content)).convert("RGB")
-    return img.resize((width, height), Image.LANCZOS)

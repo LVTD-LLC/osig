@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 import io
 from dataclasses import dataclass
@@ -10,7 +11,7 @@ from typing import Annotated, Any, Literal
 from django.conf import settings
 from django.db import close_old_connections
 from PIL import Image as PILImage
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from core.font_providers import (
     BUNDLED_FONT_CHOICES,
@@ -19,56 +20,222 @@ from core.font_providers import (
     is_provider_font,
     normalize_font_name,
 )
-from core.image_styles import generate_image_router
+from core.image_styles import parse_color, render_canvas_image
+from core.image_url_safety import validate_remote_image_url
 from core.image_utils import get_image_dimensions
 from core.models import Profile
 from core.render_observability import classify_render_error, is_transient_error, record_render_attempt
 from core.usage import UsageState, track_profile_usage
 from osig.utils import get_osig_logger
 
-StyleName = Literal["base", "logo", "job_classic", "job_logo", "job_clean"]
 SiteName = Literal["x", "meta"]
-FontName = str
 OutputFormat = Literal["png", "jpeg"]
+ImageFit = Literal["cover", "contain", "fill", "none"]
+TextAlign = Literal["left", "center", "right"]
+TextVerticalAlign = Literal["top", "middle", "bottom"]
+TextOverflow = Literal["clamp"]
+ImageMediaType = Literal["image/png", "image/jpeg", "image/webp"]
 
-STYLE_CHOICES: tuple[StyleName, ...] = ("base", "logo", "job_classic", "job_logo", "job_clean")
 SITE_CHOICES: tuple[SiteName, ...] = ("x", "meta")
-FONT_CHOICES: tuple[FontName, ...] = (*BUNDLED_FONT_CHOICES, *GOOGLE_FONT_CHOICES)
+FONT_CHOICES: tuple[str, ...] = (*BUNDLED_FONT_CHOICES, *GOOGLE_FONT_CHOICES)
 FORMAT_CHOICES: tuple[OutputFormat, ...] = ("png", "jpeg")
+IMAGE_FIT_CHOICES: tuple[ImageFit, ...] = ("cover", "contain", "fill", "none")
+TEXT_ALIGN_CHOICES: tuple[TextAlign, ...] = ("left", "center", "right")
+TEXT_VERTICAL_ALIGN_CHOICES: tuple[TextVerticalAlign, ...] = ("top", "middle", "bottom")
 
-TEMPLATE_DEFINITIONS: dict[str, dict[str, str]] = {
-    "base": {
-        "name": "Article",
-        "description": "Full-bleed background with left-aligned editorial copy.",
-        "best_for": "Posts, guides, essays, launches, and pages with a strong cover image.",
-    },
-    "logo": {
-        "name": "Logo",
-        "description": "Centered logo or avatar with centered project copy.",
-        "best_for": "Projects, products, company pages, and simple brand cards.",
-    },
-    "job_classic": {
-        "name": "Job Classic",
-        "description": "High-contrast hiring card over a full-bleed image.",
-        "best_for": "Job posts with a background image and strong role headline.",
-    },
-    "job_logo": {
-        "name": "Job Logo",
-        "description": "Dark role-focused card with a circular logo slot.",
-        "best_for": "Hiring pages where the company mark is the main visual asset.",
-    },
-    "job_clean": {
-        "name": "Job Clean",
-        "description": "Minimal light hiring card with an accent bar and logo slot.",
-        "best_for": "Job posts that need a calmer, text-first preview.",
-    },
-}
+MIN_CANVAS_EDGE = 200
+MAX_CANVAS_EDGE = 2000
+MAX_CANVAS_PIXELS = 2_500_000
+MAX_LAYER_EDGE = 4000
+MAX_LAYER_PIXELS = MAX_CANVAS_PIXELS
+MAX_LAYERS = 50
+MAX_INLINE_IMAGE_BYTES = 2_000_000
 
 logger = get_osig_logger(__name__)
 
 
+def _validate_color(value: str) -> str:
+    try:
+        parse_color(value)
+    except ValueError as exc:
+        raise ValueError(f"Invalid color value: {value}") from exc
+    return value
+
+
+ColorString = Annotated[str, Field(max_length=64)]
+
+
+class LinearGradientFill(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, str_strip_whitespace=True)
+
+    type: Literal["linear_gradient"]
+    from_color: Annotated[str, Field(alias="from", max_length=64, description="Gradient start color.")]
+    to_color: Annotated[str, Field(alias="to", max_length=64, description="Gradient end color.")]
+    angle: Annotated[int, Field(default=0, ge=0, le=360, description="Gradient angle in degrees.")]
+
+    @field_validator("from_color", "to_color")
+    @classmethod
+    def validate_color(cls, value: str) -> str:
+        return _validate_color(value)
+
+
+CanvasFill = ColorString | LinearGradientFill
+
+
+def _validate_fill(value: CanvasFill) -> CanvasFill:
+    if isinstance(value, str):
+        return _validate_color(value)
+    return value
+
+
+class BorderSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    color: Annotated[str, Field(default="#000000", max_length=64, description="Border color.")]
+    width: Annotated[int, Field(default=1, ge=1, le=100, description="Border width in pixels.")]
+
+    @field_validator("color")
+    @classmethod
+    def validate_color(cls, value: str) -> str:
+        return _validate_color(value)
+
+
+class ShadowSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    x: Annotated[int, Field(default=0, ge=-500, le=500, description="Shadow x offset in pixels.")]
+    y: Annotated[int, Field(default=8, ge=-500, le=500, description="Shadow y offset in pixels.")]
+    blur: Annotated[int, Field(default=16, ge=0, le=200, description="Shadow blur radius in pixels.")]
+    color: Annotated[str, Field(default="rgba(0,0,0,0.35)", max_length=64, description="Shadow color.")]
+
+    @field_validator("color")
+    @classmethod
+    def validate_color(cls, value: str) -> str:
+        return _validate_color(value)
+
+
+class UrlImageSource(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    type: Literal["url"]
+    url: Annotated[str, Field(min_length=1, max_length=2000, description="Public HTTPS image URL.")]
+
+    @field_validator("url")
+    @classmethod
+    def validate_public_https_url(cls, value: str) -> str:
+        return validate_remote_image_url(value, resolve=False)
+
+
+class Base64ImageSource(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    type: Literal["base64"]
+    media_type: Annotated[ImageMediaType, Field(default="image/png", description="Inline image MIME type.")]
+    data: Annotated[str, Field(min_length=1, max_length=3_000_000, description="Base64 encoded image bytes.")]
+
+    @field_validator("data")
+    @classmethod
+    def validate_base64_size(cls, value: str) -> str:
+        try:
+            decoded = base64.b64decode(value, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise ValueError("Inline image data must be valid base64.") from exc
+        if len(decoded) > MAX_INLINE_IMAGE_BYTES:
+            raise ValueError(f"Inline image data must be at most {MAX_INLINE_IMAGE_BYTES} bytes.")
+        return value
+
+
+ImageSource = Annotated[UrlImageSource | Base64ImageSource, Field(discriminator="type")]
+
+
+class CanvasLayerBase(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    x: Annotated[int, Field(ge=-MAX_LAYER_EDGE, le=MAX_LAYER_EDGE, description="Left pixel position.")]
+    y: Annotated[int, Field(ge=-MAX_LAYER_EDGE, le=MAX_LAYER_EDGE, description="Top pixel position.")]
+    opacity: Annotated[float, Field(default=1.0, ge=0, le=1, description="Layer opacity from 0 to 1.")]
+
+
+class RectLayer(CanvasLayerBase):
+    kind: Literal["rect"]
+    width: Annotated[int, Field(ge=1, le=MAX_LAYER_EDGE, description="Rectangle width in pixels.")]
+    height: Annotated[int, Field(ge=1, le=MAX_LAYER_EDGE, description="Rectangle height in pixels.")]
+    fill: Annotated[
+        CanvasFill,
+        Field(
+            default="#000000",
+            description="Solid color or linear gradient fill.",
+        ),
+    ]
+    radius: Annotated[int, Field(default=0, ge=0, le=MAX_LAYER_EDGE, description="Corner radius in pixels.")]
+    border: Annotated[BorderSpec | None, Field(default=None, description="Optional rectangle border.")]
+    shadow: Annotated[ShadowSpec | None, Field(default=None, description="Optional rectangle shadow.")]
+
+    @field_validator("fill")
+    @classmethod
+    def validate_fill(cls, value: CanvasFill) -> CanvasFill:
+        return _validate_fill(value)
+
+    @model_validator(mode="after")
+    def validate_area(self) -> RectLayer:
+        if self.width * self.height > MAX_LAYER_PIXELS:
+            raise ValueError(f"Layer area must be at most {MAX_LAYER_PIXELS} pixels.")
+        return self
+
+
+class TextLayer(CanvasLayerBase):
+    kind: Literal["text"]
+    text: Annotated[str, Field(min_length=1, max_length=4000, description="Text to draw.")]
+    font: Annotated[
+        str,
+        Field(
+            default="helvetica", max_length=120, description="Bundled font id or provider font such as google:inter."
+        ),
+    ]
+    font_size: Annotated[int, Field(default=48, ge=1, le=300, description="Font size in pixels.")]
+    color: Annotated[str, Field(default="#111111", max_length=32, description="Text color.")]
+    width: Annotated[int | None, Field(default=None, ge=1, le=MAX_LAYER_EDGE, description="Optional wrap width.")]
+    height: Annotated[int | None, Field(default=None, ge=1, le=MAX_LAYER_EDGE, description="Optional text box height.")]
+    line_height: Annotated[int | None, Field(default=None, ge=1, le=500, description="Optional line height in pixels.")]
+    align: Annotated[TextAlign, Field(default="left", description="Text alignment inside width.")]
+    valign: Annotated[TextVerticalAlign, Field(default="top", description="Vertical alignment inside height.")]
+    overflow: Annotated[TextOverflow, Field(default="clamp", description="Text overflow behavior.")]
+    stroke_color: Annotated[str | None, Field(default=None, max_length=32, description="Optional text stroke color.")]
+    stroke_width: Annotated[int, Field(default=0, ge=0, le=20, description="Optional text stroke width.")]
+
+    @field_validator("font")
+    @classmethod
+    def normalize_font(cls, font: str) -> str:
+        return normalize_font_name(font)
+
+    @field_validator("color", "stroke_color")
+    @classmethod
+    def validate_color(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return _validate_color(value)
+
+
+class ImageLayer(CanvasLayerBase):
+    kind: Literal["image"]
+    src: Annotated[ImageSource, Field(description="HTTPS or inline base64 image source.")]
+    width: Annotated[int, Field(ge=1, le=MAX_LAYER_EDGE, description="Image box width in pixels.")]
+    height: Annotated[int, Field(ge=1, le=MAX_LAYER_EDGE, description="Image box height in pixels.")]
+    fit: Annotated[ImageFit, Field(default="cover", description="How the image should fit inside its box.")]
+    radius: Annotated[int, Field(default=0, ge=0, le=MAX_LAYER_EDGE, description="Corner radius in pixels.")]
+
+    @model_validator(mode="after")
+    def validate_area(self) -> ImageLayer:
+        if self.width * self.height > MAX_LAYER_PIXELS:
+            raise ValueError(f"Layer area must be at most {MAX_LAYER_PIXELS} pixels.")
+        return self
+
+
+CanvasLayer = Annotated[RectLayer | TextLayer | ImageLayer, Field(discriminator="kind")]
+
+
 class ImageSpec(BaseModel):
-    """Structured image input for agents and the Studio UI."""
+    """Canvas image input for agents and the Studio API."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -76,33 +243,34 @@ class ImageSpec(BaseModel):
         str,
         Field(default="", max_length=64, description="Optional OSIG profile key for quota and paid watermark state."),
     ]
-    style: Annotated[StyleName, Field(default="base", description="Image template to render.")]
-    site: Annotated[SiteName, Field(default="x", description="Target social preview size preset.")]
-    font: Annotated[
-        FontName,
-        Field(
-            default="helvetica",
-            max_length=120,
-            description="Bundled font id or provider font such as google:inter.",
-        ),
+    site: Annotated[SiteName | None, Field(default=None, description="Optional social preview size preset.")]
+    width: Annotated[
+        int | None,
+        Field(default=None, ge=MIN_CANVAS_EDGE, le=MAX_CANVAS_EDGE, description="Custom canvas width in pixels."),
     ]
-    title: Annotated[str, Field(default="", max_length=500, description="Main image copy.")]
-    subtitle: Annotated[str, Field(default="", max_length=1000, description="Secondary image copy.")]
-    eyebrow: Annotated[str, Field(default="", max_length=240, description="Small context label.")]
-    image_url: Annotated[str, Field(default="", max_length=2000, description="Remote background image or logo URL.")]
-    image_or_logo: Annotated[
-        str,
-        Field(default="", max_length=2000, description="Alias for image_url, useful for job templates."),
+    height: Annotated[
+        int | None,
+        Field(default=None, ge=MIN_CANVAS_EDGE, le=MAX_CANVAS_EDGE, description="Custom canvas height in pixels."),
     ]
+    background: Annotated[CanvasFill, Field(default="#ffffff", description="Canvas background fill.")]
+    layers: Annotated[list[CanvasLayer], Field(default_factory=list, max_length=MAX_LAYERS)]
     format: Annotated[OutputFormat, Field(default="png", description="Rendered image format.")]
     quality: Annotated[int | None, Field(default=None, ge=1, le=100, description="PNG/JPEG compression quality.")]
     max_kb: Annotated[int | None, Field(default=None, ge=1, le=10000, description="Best-effort target size in KB.")]
     v: Annotated[str, Field(default="", max_length=100, description="Optional version token for caller bookkeeping.")]
 
-    @field_validator("font")
+    @field_validator("background")
     @classmethod
-    def normalize_font(cls, font: str) -> str:
-        return normalize_font_name(font)
+    def validate_background(cls, value: CanvasFill) -> CanvasFill:
+        return _validate_fill(value)
+
+    @model_validator(mode="after")
+    def validate_dimensions(self) -> ImageSpec:
+        if (self.width is None) != (self.height is None):
+            raise ValueError("Provide both width and height for custom canvas dimensions.")
+        if self.width is not None and self.height is not None and self.width * self.height > MAX_CANVAS_PIXELS:
+            raise ValueError(f"Canvas area must be at most {MAX_CANVAS_PIXELS} pixels.")
+        return self
 
 
 @dataclass(frozen=True)
@@ -178,8 +346,102 @@ def _image_payload_metadata(payload: bytes) -> dict[str, Any]:
     }
 
 
-def list_templates() -> list[dict[str, str]]:
-    return [{"id": style, **TEMPLATE_DEFINITIONS[style]} for style in STYLE_CHOICES]
+def _dimensions_for_spec(spec: ImageSpec) -> tuple[int, int]:
+    if spec.width is not None and spec.height is not None:
+        return spec.width, spec.height
+
+    return get_image_dimensions(spec.site or "x")
+
+
+def _layer_dump(layer: CanvasLayer) -> dict[str, Any]:
+    return layer.model_dump(exclude_none=True, by_alias=True)
+
+
+def _fill_dump(fill: CanvasFill) -> str | dict[str, Any]:
+    if isinstance(fill, LinearGradientFill):
+        return fill.model_dump(by_alias=True)
+    return fill
+
+
+def _layer_bounds(layer: CanvasLayer) -> tuple[int, int, int, int] | None:
+    if isinstance(layer, TextLayer):
+        width = layer.width or _estimate_text_width(layer)
+        height = layer.height or _estimate_text_height(layer)
+    else:
+        width = layer.width
+        height = layer.height
+
+    return layer.x, layer.y, layer.x + width, layer.y + height
+
+
+def _estimate_text_width(layer: TextLayer) -> int:
+    if layer.width is not None:
+        return layer.width
+
+    average_character_width = max(1, round(layer.font_size * 0.55))
+    lines = layer.text.splitlines() or [layer.text]
+    longest_line = max(len(line) for line in lines)
+    return min(MAX_LAYER_EDGE, max(1, longest_line * average_character_width))
+
+
+def _estimate_text_height(layer: TextLayer) -> int:
+    if layer.height is not None:
+        return layer.height
+
+    line_height = layer.line_height or round(layer.font_size * 1.2)
+    return _estimate_text_lines(layer) * line_height
+
+
+def _estimate_text_lines(layer: TextLayer) -> int:
+    if not layer.width:
+        return len(layer.text.splitlines()) or 1
+
+    average_character_width = max(1, round(layer.font_size * 0.55))
+    max_chars = max(1, layer.width // average_character_width)
+    line_count = 0
+
+    for paragraph in layer.text.splitlines() or [layer.text]:
+        current_length = 0
+        words = paragraph.split() or [paragraph]
+        for word in words:
+            word_length = len(word)
+            next_length = word_length if current_length == 0 else current_length + 1 + word_length
+            if current_length and next_length > max_chars:
+                line_count += 1
+                current_length = word_length
+            else:
+                current_length = next_length
+        line_count += 1
+
+    return max(1, line_count)
+
+
+def _canvas_warnings(spec: ImageSpec, width: int, height: int) -> list[str]:
+    warnings: list[str] = []
+
+    if not spec.layers:
+        warnings.append("Spec has no layers; the renderer will return only the background and watermark state.")
+
+    if any(isinstance(layer, TextLayer) and is_provider_font(layer.font) for layer in spec.layers):
+        warnings.append("Provider fonts are fetched from the third-party provider on first render and cached locally.")
+
+    for index, layer in enumerate(spec.layers):
+        bounds = _layer_bounds(layer)
+        if bounds is None:
+            continue
+        left, top, right, bottom = bounds
+        if left < 0 or top < 0 or right > width or bottom > height:
+            warnings.append(f"Layer {index} extends outside the {width}x{height} canvas and will be clipped.")
+
+        if isinstance(layer, TextLayer) and layer.height is not None:
+            line_height = layer.line_height or round(layer.font_size * 1.2)
+            max_lines = max(1, layer.height // line_height)
+            if _estimate_text_lines(layer) > max_lines:
+                warnings.append(
+                    f"Layer {index} text may be clamped inside its {layer.width or width}x{layer.height} box."
+                )
+
+    return warnings
 
 
 def image_contract() -> dict[str, Any]:
@@ -189,14 +451,69 @@ def image_contract() -> dict[str, Any]:
 
     return {
         "product": "OSIG Agent Images",
-        "purpose": "Deterministic Open Graph and social preview images for AI agents.",
-        "templates": list_templates(),
+        "purpose": "Deterministic canvas images for AI agents.",
+        "canvas": {
+            "default_site": "x",
+            "presets": dimensions,
+            "custom_dimensions": {
+                "min_width": MIN_CANVAS_EDGE,
+                "max_width": MAX_CANVAS_EDGE,
+                "min_height": MIN_CANVAS_EDGE,
+                "max_height": MAX_CANVAS_EDGE,
+                "max_pixels": MAX_CANVAS_PIXELS,
+            },
+            "max_layers": MAX_LAYERS,
+            "coordinate_system": "Pixel coordinates with origin at the top-left corner.",
+        },
+        "limits": {
+            "max_layers": MAX_LAYERS,
+            "max_inline_image_bytes": MAX_INLINE_IMAGE_BYTES,
+            "max_layer_edge": MAX_LAYER_EDGE,
+            "max_layer_pixels": MAX_LAYER_PIXELS,
+        },
+        "layer_kinds": {
+            "rect": {
+                "required": ["kind", "x", "y", "width", "height"],
+                "optional": ["fill", "opacity", "radius", "border", "shadow"],
+            },
+            "text": {
+                "required": ["kind", "x", "y", "text"],
+                "optional": [
+                    "font",
+                    "font_size",
+                    "color",
+                    "width",
+                    "height",
+                    "line_height",
+                    "align",
+                    "valign",
+                    "overflow",
+                    "opacity",
+                    "stroke_color",
+                    "stroke_width",
+                ],
+            },
+            "image": {
+                "required": ["kind", "x", "y", "src", "width", "height"],
+                "optional": ["fit", "opacity", "radius"],
+            },
+        },
+        "fill_models": {
+            "solid": {"type": "string", "examples": ["#0f172a", "rgba(15,23,42,0.92)"]},
+            "linear_gradient": {"required": ["type", "from", "to"], "optional": ["angle"]},
+        },
+        "image_sources": {
+            "url": "Public HTTPS image URL. Private, loopback, link-local, and credentialed URLs are rejected.",
+            "base64": "Inline base64 image bytes with media_type image/png, image/jpeg, or image/webp.",
+        },
         "choices": {
-            "style": list(STYLE_CHOICES),
             "site": list(SITE_CHOICES),
             "font": list(FONT_CHOICES),
             "font_provider": list(FONT_PROVIDER_CHOICES),
             "format": list(FORMAT_CHOICES),
+            "image_fit": list(IMAGE_FIT_CHOICES),
+            "text_align": list(TEXT_ALIGN_CHOICES),
+            "text_valign": list(TEXT_VERTICAL_ALIGN_CHOICES),
         },
         "font_providers": {
             "google": {
@@ -209,15 +526,6 @@ def image_contract() -> dict[str, Any]:
                 ],
             }
         },
-        "dimensions": dimensions,
-        "fields": {
-            "title": "Main copy. Templates clamp or truncate long text.",
-            "subtitle": "Supporting copy. Keep it short for social previews.",
-            "eyebrow": "Small context label such as category, role type, or launch status.",
-            "image_url": "Remote background image or logo URL. image_or_logo is accepted as an alias.",
-            "font": "Bundled font id or provider font value. Provider values use the form google:<family-slug>.",
-            "key": "Optional profile key for quota and paid watermark state. Omit for self-hosted/local trials.",
-        },
         "access": {
             "hosted_mcp_url": "https://osig.app/mcp/",
             "authentication_required": False,
@@ -229,11 +537,43 @@ def image_contract() -> dict[str, Any]:
             "future_auth_note": "Profile-key auth is expected before paid production MCP access.",
         },
         "workflow": [
-            "Call get_image_contract or list_image_templates to choose a template.",
+            "Call get_image_contract to inspect canvas limits, layer kinds, choices, and output formats.",
+            "Build an ImageSpec with dimensions, background, and ordered rect/text/image layers.",
             "Call normalize_image_spec to canonicalize input and surface warnings.",
             "Call render_image_preview while iterating.",
             "Call export_image when the asset is ready to save into a repository.",
         ],
+        "example_spec": {
+            "site": "x",
+            "background": "#0f172a",
+            "layers": [
+                {
+                    "kind": "rect",
+                    "x": 40,
+                    "y": 40,
+                    "width": 720,
+                    "height": 370,
+                    "fill": {"type": "linear_gradient", "from": "#1d4ed8", "to": "#7c3aed", "angle": 0},
+                    "radius": 24,
+                    "border": {"color": "rgba(255,255,255,0.22)", "width": 2},
+                    "shadow": {"x": 0, "y": 14, "blur": 28, "color": "rgba(0,0,0,0.35)"},
+                },
+                {
+                    "kind": "text",
+                    "x": 80,
+                    "y": 110,
+                    "width": 620,
+                    "height": 150,
+                    "text": "Ship deterministic images from code.",
+                    "font": "google:inter",
+                    "font_size": 52,
+                    "color": "#ffffff",
+                    "line_height": 62,
+                    "overflow": "clamp",
+                },
+            ],
+            "format": "png",
+        },
     }
 
 
@@ -246,27 +586,22 @@ def normalize_image_spec(spec: ImageSpec, profile: Profile | None = None) -> Nor
     if profile is not None and spec.key != profile.key:
         spec = spec.model_copy(update={"key": profile.key})
 
-    image_url = spec.image_url or spec.image_or_logo
-    if spec.image_url and spec.image_or_logo and spec.image_url != spec.image_or_logo:
-        warnings.append("Both image_url and image_or_logo were provided; image_url was used.")
-
-    if is_provider_font(spec.font):
-        warnings.append("Provider fonts are fetched from the third-party provider on first render and cached locally.")
-
     resolved_profile = profile or _profile_for_key(spec.key, warnings)
+    width, height = _dimensions_for_spec(spec)
 
     public_spec: dict[str, Any] = {
-        "style": spec.style,
-        "site": spec.site,
-        "font": spec.font,
+        "width": width,
+        "height": height,
+        "background": _fill_dump(spec.background),
+        "layers": [_layer_dump(layer) for layer in spec.layers],
         "format": spec.format,
     }
+
+    if spec.site:
+        public_spec["site"] = spec.site
+
     optional_values = {
         "key": spec.key,
-        "title": spec.title,
-        "subtitle": spec.subtitle,
-        "eyebrow": spec.eyebrow,
-        "image_url": image_url,
         "quality": spec.quality,
         "max_kb": spec.max_kb,
         "v": spec.v,
@@ -275,11 +610,12 @@ def normalize_image_spec(spec: ImageSpec, profile: Profile | None = None) -> Nor
         if value not in (None, ""):
             public_spec[key] = value
 
+    warnings.extend(_canvas_warnings(spec, width, height))
+
     render_params = dict(public_spec)
     if resolved_profile is not None:
         render_params["profile_id"] = resolved_profile.id
 
-    width, height = get_image_dimensions(spec.site)
     return NormalizedImageSpec(
         spec=public_spec,
         render_params=render_params,
@@ -331,7 +667,7 @@ def render_image(
         for attempt_number in range(1, max_attempts + 1):
             attempt_started_at = perf_counter()
             try:
-                image_buffer = generate_image_router(normalized.render_params)
+                image_buffer = render_canvas_image(normalized.render_params)
                 payload = image_buffer.getvalue()
                 render_duration_ms = int((perf_counter() - attempt_started_at) * 1000)
             except Exception as exc:
@@ -341,7 +677,7 @@ def render_image(
                 _record_render_attempt_safely(
                     profile=normalized.profile,
                     key=normalized.spec.get("key", ""),
-                    style=normalized.spec.get("style", "base"),
+                    renderer="canvas",
                     success=False,
                     duration_ms=duration_ms,
                     error_type=error_type,
@@ -366,7 +702,7 @@ def render_image(
                 _record_render_attempt_safely(
                     profile=normalized.profile,
                     key=normalized.spec.get("key", ""),
-                    style=normalized.spec.get("style", "base"),
+                    renderer="canvas",
                     success=True,
                     duration_ms=render_duration_ms,
                     attempt_number=attempt_number,

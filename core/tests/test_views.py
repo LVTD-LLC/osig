@@ -27,7 +27,7 @@ class TestHomeView:
         body = response.content.decode()
         assert "Repo-ready OG images." in body
         assert "OSIG is the Open Source Social Image Generator." in body
-        assert "Discover template contracts. Render previews. Export PNG or JPEG assets into a repository." in body
+        assert "Discover the canvas contract. Render previews. Export PNG or JPEG assets into a repository." in body
         assert "A renderer shaped for agent work." in body
         assert "Open source renderer, paid hosted path." in body
         assert "https://osig.app/mcp/" in body
@@ -49,6 +49,7 @@ class TestHomeView:
     def test_mcp_agent_prompt_is_concise_setup_instruction(self):
         assert "https://osig.app/mcp/" in MCP_AGENT_PROMPT
         assert "deterministic Open Graph" in MCP_AGENT_PROMPT
+        assert "typed canvas" in MCP_AGENT_PROMPT
         assert "get_image_contract" not in MCP_AGENT_PROMPT
         assert "normalize_image_spec" not in MCP_AGENT_PROMPT
         assert "render_image_preview" not in MCP_AGENT_PROMPT

@@ -492,36 +492,6 @@
     white-space: nowrap;
   }
 
-  .template-strip {
-    display: grid;
-    gap: 0;
-    margin-top: 1rem;
-    overflow: hidden;
-    border: 1px solid var(--osig-line);
-    border-radius: 0.5rem;
-    background: var(--osig-surface);
-  }
-
-  .template-strip article {
-    padding: 1rem;
-  }
-
-  .template-strip article + article {
-    border-top: 1px solid var(--osig-line);
-  }
-
-  .template-strip h3 {
-    font-size: 0.95rem;
-    font-weight: 780;
-  }
-
-  .template-strip p {
-    margin-top: 0.35rem;
-    color: var(--osig-muted);
-    font-size: 0.85rem;
-    line-height: 1.45;
-  }
-
   .code-block {
     overflow-x: auto;
     border-radius: 0.5rem;
@@ -1186,14 +1156,6 @@
     justify-content: space-between;
   }
 
-  .template-strip {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-
-  .template-strip article + article {
-    border-top: 0;
-    border-left: 1px solid var(--osig-line);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
