@@ -2,7 +2,7 @@
 <div class="message-stack">
   {% for message in messages %}
   <div
-    data-message-id="{{ forloop.counter }}"
+    data-message-container
     role="{% if message.tags == 'error' %}alert{% else %}status{% endif %}"
     aria-live="{% if message.tags == 'error' %}assertive{% else %}polite{% endif %}"
     aria-atomic="true"
@@ -21,7 +21,7 @@
         </p>
       </div>
       <div class="flex-shrink-0 ml-3">
-        <button data-message-dismiss data-message-id="{{ forloop.counter }}" type="button" class="inline-flex h-11 w-11 items-center justify-center rounded-md {% if message.tags == 'error' %}text-[var(--osig-danger)]{% else %}text-[var(--osig-success)]{% endif %} focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--osig-accent)]">
+        <button data-message-dismiss type="button" class="inline-flex h-11 w-11 items-center justify-center rounded-md {% if message.tags == 'error' %}text-[var(--osig-danger)]{% else %}text-[var(--osig-success)]{% endif %} focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--osig-accent)]">
           <span class="sr-only">Dismiss</span>
           <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -44,8 +44,7 @@
   document.addEventListener('click', (event) => {
     const dismissButton = event.target.closest('[data-message-dismiss]');
     if (dismissButton) {
-      const messageId = dismissButton.getAttribute('data-message-id');
-      const item = document.querySelector(`[data-message-id="${messageId}"]`);
+      const item = dismissButton.closest('[data-message-container]');
       if (item) {
         hideMessage(item);
       }

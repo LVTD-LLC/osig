@@ -1,7 +1,9 @@
 import pytest
 from allauth.account.models import EmailAddress
 from django.conf import settings
+from django.contrib.messages.storage.base import Message
 from django.contrib.sites.models import Site
+from django.template.loader import render_to_string
 from django.test import RequestFactory, override_settings
 from django.urls import reverse
 
@@ -58,6 +60,14 @@ class TestHomeView:
 
 @pytest.mark.django_db
 class TestSeoSurface:
+    def test_messages_component_uses_explicit_dismiss_container(self):
+        body = render_to_string("components/messages.html", {"messages": [Message(25, "Saved")]})
+
+        assert "data-message-container" in body
+        assert "dismissButton.closest('[data-message-container]')" in body
+        assert "data-message-id" not in body
+        assert "querySelector" not in body
+
     def test_robots_txt_points_to_sitemap_and_blocks_utility_paths(self, client):
         with override_settings(ALLOWED_HOSTS=["osig.app"]):
             response = client.get(reverse("robots_txt"), HTTP_HOST="osig.app")
