@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus";
 
 export default class extends Controller {
-  static targets = ["source", "button"];
+  static targets = ["source", "button", "status"];
 
   connect() {
     if (this.hasButtonTarget) {
@@ -41,12 +41,20 @@ export default class extends Controller {
   }
 
   fallbackCopy(text) {
-    if (!this.hasSourceTarget || !text) {
+    if (!text) {
       return false;
     }
 
-    this.sourceTarget.focus();
-    this.sourceTarget.select();
+    const copyBuffer = document.createElement("textarea");
+    copyBuffer.value = text;
+    copyBuffer.readOnly = true;
+    copyBuffer.tabIndex = -1;
+    copyBuffer.style.position = "fixed";
+    copyBuffer.style.insetInlineStart = "-9999px";
+    copyBuffer.style.top = "0";
+    copyBuffer.style.opacity = "0";
+    document.body.appendChild(copyBuffer);
+    copyBuffer.select();
 
     try {
       if (!document.execCommand("copy")) {
@@ -58,6 +66,7 @@ export default class extends Controller {
       console.error("Failed to copy text", error);
       return false;
     } finally {
+      copyBuffer.remove();
       window.getSelection()?.removeAllRanges();
     }
   }
@@ -76,10 +85,16 @@ export default class extends Controller {
     }
 
     this.buttonTarget.textContent = text;
+    if (this.hasStatusTarget) {
+      this.statusTarget.textContent = text;
+    }
     this.clearResetTimer();
     this.resetTimer = window.setTimeout(() => {
       if (this.hasButtonTarget) {
         this.buttonTarget.textContent = this.defaultButtonText || "Copy";
+      }
+      if (this.hasStatusTarget) {
+        this.statusTarget.textContent = "";
       }
       this.resetTimer = null;
     }, 2000);

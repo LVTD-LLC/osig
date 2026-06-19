@@ -113,6 +113,9 @@ class TestSeoSurface:
         assert "Back to OSIG" in body
         assert "Sign out" in body
         assert reverse("account_logout") in body
+        assert 'data-controller="clipboard"' in body
+        assert 'data-action="clipboard#copy"' in body
+        assert "copyToken()" not in body
         assert "Compare plans" not in body
         assert reverse("pricing") not in body
 
