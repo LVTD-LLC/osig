@@ -32,7 +32,6 @@
 - `core/usage.py`: per-profile usage metering and quota enforcement.
 - `core/render_observability.py`: render error taxonomy, retry classification, aggregate metrics.
 - `core/signing.py`: legacy signing helpers retained for now, not used by the current agent-first flow.
-- `frontend/src/controllers/agent_studio_controller.js`: Studio render/export interactions.
 - `frontend/src/styles/index.css`: product UI tokens and component classes.
 - `deployment/entrypoint.sh`: production server/worker role selection.
 

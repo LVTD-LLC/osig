@@ -80,11 +80,13 @@ export default class extends Controller {
   }
 
   showButtonState(text) {
-    if (!this.hasButtonTarget) {
+    if (!this.hasButtonTarget && !this.hasStatusTarget) {
       return;
     }
 
-    this.buttonTarget.textContent = text;
+    if (this.hasButtonTarget) {
+      this.buttonTarget.textContent = text;
+    }
     if (this.hasStatusTarget) {
       this.statusTarget.textContent = text;
     }
