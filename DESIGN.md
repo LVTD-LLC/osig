@@ -19,7 +19,7 @@ The generated images are also part of the product design. They should look polis
 - Mood: clear technical workspace, calm publishing utility, direct copy.
 - Surfaces: light neutral background, white working panels, soft secondary panels for supporting context.
 - Shape: 8px radius for panels, controls, previews, and repeated items.
-- Chrome: borders over shadows; use framing only where it helps identify a tool, form, preview, code sample, or plan.
+- Chrome: borders over shadows; use framing only where it helps identify a tool, form, preview, or plan.
 - Density: practical and scannable. Avoid oversized marketing compositions unless redesigning the public homepage intentionally.
 
 ## Color
@@ -29,7 +29,6 @@ Tokens live in `frontend/src/styles/index.css` and use OKLCH values.
 - `--osig-bg`: page background.
 - `--osig-surface`: primary content surface.
 - `--osig-surface-soft`: secondary surface.
-- `--osig-surface-tint`: subtle inline code and inactive step backgrounds.
 - `--osig-ink`: primary text.
 - `--osig-muted`: body and helper text.
 - `--osig-soft`: low-emphasis labels and status text.
@@ -39,7 +38,6 @@ Tokens live in `frontend/src/styles/index.css` and use OKLCH values.
 - `--osig-accent-soft`: selected states and light callouts.
 - `--osig-olive` and `--osig-amber`: logo-informed supporting colors.
 - `--osig-danger`, `--osig-success`, `--osig-warning`: semantic states.
-- `--osig-code`: code block background.
 
 ## Typography
 
@@ -50,11 +48,9 @@ Do not use viewport-width font scaling. Keep letter spacing at `0` in new compac
 ## Components
 
 - Buttons: `.btn-primary`, `.btn-secondary`, `.btn-danger`, `.btn-ghost`.
-- Forms: `.field-label`, `.field`, `.field-help`, `.copy-field`.
-- Layout: `.site-container`, `.site-container-narrow`, `.panel`, `.panel-soft`.
-- Content: `.page-kicker`, `.page-title`, `.section-title`, `.lede`, `.doc-prose`, `.code-block`.
-- Workflow: `.step-pill`, `.wizard-step-indicator`.
-- Preview: `.preview-frame`.
+- Forms: `.field-label`, `.field`.
+- Layout: `.site-container-narrow`, `.panel`.
+- Content: `.page-kicker`, `.section-title`, `.lede`.
 
 Add new component classes only when the pattern repeats across pages. For one-off layouts, prefer Tailwind utility classes in the template.
 

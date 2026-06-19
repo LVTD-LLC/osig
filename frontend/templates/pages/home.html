@@ -46,10 +46,22 @@
 
       <div class="landing-output-stack" aria-label="OSIG generated image examples">
         <figure class="landing-output landing-output-primary">
-          <img src="{% static 'vendors/images/landing-preview-template.png' %}" alt="Generated OSIG preview for deterministic social preview images." />
+          <img
+            src="{% static 'vendors/images/landing-preview-template.png' %}"
+            alt="Generated OSIG preview for deterministic social preview images."
+            width="800"
+            height="450"
+            decoding="async"
+          />
         </figure>
         <figure class="landing-output landing-output-secondary">
-          <img src="{% static 'vendors/images/landing-preview-contract.png' %}" alt="Generated OSIG preview describing the agent image contract." />
+          <img
+            src="{% static 'vendors/images/landing-preview-contract.png' %}"
+            alt="Generated OSIG preview describing the agent image contract."
+            width="800"
+            height="450"
+            decoding="async"
+          />
         </figure>
       </div>
     </div>
@@ -65,11 +77,10 @@
       <textarea
         id="mcp-agent-prompt"
         data-clipboard-target="source"
-        aria-hidden="true"
-        tabindex="-1"
         readonly
-        class="sr-only"
+        hidden
       >{{ mcp_agent_prompt }}</textarea>
+      <span data-clipboard-target="status" class="sr-only" aria-live="polite" aria-atomic="true"></span>
       <button
         type="button"
         data-clipboard-target="button"
@@ -125,6 +136,8 @@
         <img
           src="{% static 'vendors/images/landing-preview-export.png' %}"
           alt="Generated OSIG preview for exporting a production Open Graph image."
+          width="800"
+          height="450"
           loading="lazy"
           decoding="async"
         />

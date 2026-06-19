@@ -7,7 +7,7 @@
 - `core/api/`: Django Ninja API schemas, views, and auth helpers.
 - `core/tests/`: pytest coverage for renderer behavior, MCP, auth, quotas, views, reliability, Studio API, and removed legacy endpoints.
 - `frontend/src/`: JavaScript controllers and CSS entrypoint.
-- `frontend/templates/`: Django templates for pages, account flows, components, blog, and base layout.
+- `frontend/templates/`: Django templates for pages, account flows, components, and base layout.
 - `frontend/vendors/images/`: static product/logo/example images.
 - `fonts/`: bundled fonts used by the Pillow renderer.
 - `docs/`: project and feature documentation.
@@ -32,7 +32,6 @@
 - `core/usage.py`: per-profile usage metering and quota enforcement.
 - `core/render_observability.py`: render error taxonomy, retry classification, aggregate metrics.
 - `core/signing.py`: legacy signing helpers retained for now, not used by the current agent-first flow.
-- `frontend/src/controllers/agent_studio_controller.js`: Studio render/export interactions.
 - `frontend/src/styles/index.css`: product UI tokens and component classes.
 - `deployment/entrypoint.sh`: production server/worker role selection.
 

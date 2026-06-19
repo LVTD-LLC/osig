@@ -79,24 +79,32 @@
       </form>
     </section>
 
-    <section class="panel mt-6 p-5">
+    <section class="panel mt-6 p-5" data-controller="clipboard">
       <h2 class="text-lg font-bold">API token</h2>
-      <p class="mt-2 text-sm leading-6 text-[var(--osig-muted)]">Use this token as the <span class="font-mono">key</span> value for hosted MCP and Studio API quota and watermark state.</p>
+      <p id="api-token-description" class="mt-2 text-sm leading-6 text-[var(--osig-muted)]">
+        Use this token as the <span class="font-mono">key</span> value for hosted MCP and Studio API quota and watermark state.
+      </p>
       <div class="mt-5 flex flex-col gap-3 sm:flex-row">
-        <input type="text" id="user-token" value="{{ object.key }}" readonly class="field font-mono text-sm">
-        <button onclick="copyToken()" class="btn-secondary sm:w-32" type="button">
+        <input
+          type="text"
+          id="user-token"
+          value="{{ object.key }}"
+          readonly
+          class="field font-mono text-sm"
+          data-clipboard-target="source"
+          aria-describedby="api-token-description"
+        >
+        <span data-clipboard-target="status" class="sr-only" aria-live="polite" aria-atomic="true"></span>
+        <button
+          class="btn-secondary sm:w-32"
+          type="button"
+          data-clipboard-target="button"
+          data-action="clipboard#copy"
+          aria-describedby="api-token-description"
+        >
           Copy token
         </button>
       </div>
     </section>
   </section>
-
-  <script>
-    function copyToken() {
-      var tokenInput = document.getElementById("user-token");
-      tokenInput.select();
-      tokenInput.setSelectionRange(0, 99999); // For mobile devices
-      document.execCommand("copy");
-    }
-  </script>
 {% endblock content %}

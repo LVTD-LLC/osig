@@ -57,9 +57,6 @@
   },
   "dependencies": {
     "@hotwired/stimulus": "^3.2.2",
-    "@hotwired/stimulus-webpack-helpers": "^1.0.1",
-    "@stimulus-components/dropdown": "^3.0.0",
-    "@stimulus-components/reveal": "^5.0.0",
     "bootstrap": "^5.3.3",
     "core-js": "^3.38.1",
     "cssnano": "^7.0.6"
