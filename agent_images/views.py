@@ -15,10 +15,7 @@ from .services import ImageRenderFailed, ImageSpec, ImageUsageLimitExceeded, ren
 def _profile_for_request(request: HttpRequest):
     if not request.user.is_authenticated:
         return None
-    try:
-        return request.user.profile
-    except Profile.DoesNotExist:
-        return None
+    return Profile.objects.filter(user=request.user).first()
 
 
 @require_POST

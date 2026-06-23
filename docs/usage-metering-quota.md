@@ -36,9 +36,23 @@ When a keyed Studio request is accepted, quota state is returned in the JSON pay
 
 MCP tool responses include the same quota metadata when a render is accepted.
 
+Render responses also include an `access` object for agents:
+
+- `mode`: `trial` or `keyed`
+- `profile_key_supplied`
+- `profile_resolved`
+- `paid_entitlement`
+- `entitlement_reason`
+- `watermark.applied`
+- `watermark.reason`
+- `quota.tracked`
+- `quota.state`
+
+The account settings page shows the same hosted access posture: plan, watermark state, daily quota, and monthly quota.
+
 ## Trial behavior
 
-No-key trial renders remain watermarked and do not resolve paid watermark state.
+No-key trial renders remain watermarked and do not resolve paid watermark state. Invalid keys also fall back to watermarked trial output and return a warning plus `access.entitlement_reason=invalid_profile_key`.
 
 ## Admin visibility
 

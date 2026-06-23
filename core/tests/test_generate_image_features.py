@@ -158,6 +158,15 @@ class TestAgentImageService:
         assert normalized.spec["width"] == 800
         assert normalized.spec["height"] == 450
 
+    def test_normalize_image_spec_supports_x_meta_and_custom_dimensions(self):
+        x_normalized = normalize_image_spec(ImageSpec.model_validate({"site": "x"}))
+        meta_normalized = normalize_image_spec(ImageSpec.model_validate({"site": "meta"}))
+        custom_normalized = normalize_image_spec(ImageSpec.model_validate({"width": 640, "height": 360}))
+
+        assert (x_normalized.width, x_normalized.height) == (800, 450)
+        assert (meta_normalized.width, meta_normalized.height) == (600, 315)
+        assert (custom_normalized.width, custom_normalized.height) == (640, 360)
+
     def test_canvas_background_supports_gradient_fill(self):
         spec = ImageSpec.model_validate(
             {
@@ -260,6 +269,26 @@ class TestAgentImageService:
 
         assert "Image URLs must use HTTPS" in str(exc.value)
 
+    def test_image_spec_rejects_missing_image_source(self):
+        with pytest.raises(ValidationError) as exc:
+            ImageSpec.model_validate(
+                {
+                    "width": 300,
+                    "height": 220,
+                    "layers": [
+                        {
+                            "kind": "image",
+                            "x": 20,
+                            "y": 20,
+                            "width": 120,
+                            "height": 80,
+                        }
+                    ],
+                }
+            )
+
+        assert "src" in str(exc.value)
+
     def test_image_spec_rejects_private_image_url_hosts(self):
         with pytest.raises(ValidationError) as exc:
             ImageSpec.model_validate(
@@ -355,8 +384,21 @@ class TestAgentImageService:
 
         assert png_payload["content_type"] == "image/png"
         assert base64.b64decode(png_payload["image_base64"]).startswith(b"\x89PNG")
+        assert png_payload["mode"] == "preview"
+        assert png_payload["spec_sha256"]
+        assert png_payload["image_sha256"] == png_payload["sha256"]
+        assert png_payload["access"]["watermark"]["applied"] is True
         assert jpeg_payload["content_type"] == "image/jpeg"
         assert base64.b64decode(jpeg_payload["image_base64"]).startswith(b"\xff\xd8")
+
+    def test_export_mode_returns_repository_publish_metadata(self):
+        payload = render_image(ImageSpec.model_validate(_canvas_spec()), output_mode="export")
+
+        assert payload["mode"] == "export"
+        assert payload["export"]["final"] is True
+        assert payload["export"]["suggested_filename"].startswith("osig-")
+        assert payload["export"]["cache_key"]
+        assert payload["export"]["image_sha256"] == payload["image_sha256"]
 
     def test_jpeg_quality_output_is_deterministic(self):
         spec = ImageSpec.model_validate({**_canvas_spec(), "format": "jpeg", "quality": 62})

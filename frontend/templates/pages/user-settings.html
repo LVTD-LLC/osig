@@ -23,8 +23,31 @@
 
     {% include "components/confirm-email.html" with email_verified=email_verified %}
 
-    {% if not has_pro_subscription %}
     <section class="panel mt-8 p-5">
+      <h2 class="text-lg font-bold">Hosted access</h2>
+      <dl class="mt-5 grid gap-4 sm:grid-cols-2">
+        <div>
+          <dt class="text-xs font-semibold uppercase text-[var(--osig-soft)]">Plan</dt>
+          <dd class="mt-1 text-sm text-[var(--osig-ink)]">{{ hosted_access.plan_label }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-semibold uppercase text-[var(--osig-soft)]">Watermark</dt>
+          <dd class="mt-1 text-sm text-[var(--osig-ink)]">{{ hosted_access.watermark_label }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-semibold uppercase text-[var(--osig-soft)]">Daily quota</dt>
+          <dd class="mt-1 text-sm text-[var(--osig-ink)]">{{ hosted_access.daily_count }} / {{ hosted_access.daily_limit }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-semibold uppercase text-[var(--osig-soft)]">Monthly quota</dt>
+          <dd class="mt-1 text-sm text-[var(--osig-ink)]">{{ hosted_access.monthly_count }} / {{ hosted_access.monthly_limit }}</dd>
+        </div>
+      </dl>
+      <p class="mt-4 text-sm leading-6 text-[var(--osig-muted)]">{{ hosted_access.quota_label }}.</p>
+    </section>
+
+    {% if not has_pro_subscription %}
+    <section class="panel mt-6 p-5">
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 class="text-lg font-bold">Upgrade hosted images</h2>

@@ -82,7 +82,7 @@ keeps requests reliable when the ASGI server runs multiple Gunicorn workers.
 
 MCP is intentionally narrow while it is easy to try from Codex and other agent clients.
 
-Do not expose private/admin MCP tools while this remains public. Profile keys may be passed by `X-API-Key` or bearer auth for quota and paid watermark state.
+Do not expose private/admin MCP tools while this remains public. Profile keys may be passed by `X-API-Key` or bearer auth for quota and paid watermark state. Set `OSIG_MCP_REQUIRE_AUTH=True` before treating hosted MCP as paid production access.
 
 ## Roadmap
 

@@ -92,6 +92,15 @@ def test_get_image_contract_describes_canvas_workflow():
     assert "google" in result.data["choices"]["font_provider"]
     assert "google:inter" in result.data["choices"]["font"]
     assert result.data["font_providers"]["google"]["font_value_format"] == "google:<family-slug>"
+    assert result.data["contract_version"] == "canvas-v1"
+    assert "image_spec" in result.data["schemas"]
+    assert result.data["schemas"]["response_metadata"]["hashes"]["spec_sha256"]
+    assert result.data["access"]["accepted_profile_key_headers"] == [
+        "Authorization: Bearer <profile_key>",
+        "X-API-Key: <profile_key>",
+    ]
+    assert result.data["access"]["trial_boundaries"]["watermark_applied"] is True
+    assert result.data["access"]["trial_boundaries"]["private_or_admin_tools_exposed"] is False
     assert "export_image" in " ".join(result.data["workflow"])
 
 
@@ -123,11 +132,23 @@ def test_trial_mcp_core_tools_work_without_authentication_or_key(monkeypatch):
     assert contract["access"]["hosted_mcp_url"] == "https://osig.app/mcp/"
     assert contract["access"]["authentication_required"] is False
     assert "key" not in normalized["spec"]
+    assert normalized["spec_sha256"]
     assert "profile_id" not in normalized["render_params"]
+    assert normalized["access"]["mode"] == "trial"
+    assert normalized["access"]["watermark"]["applied"] is True
     assert normalized["output"]["width"] == 800
     assert normalized["output"]["height"] == 450
+    assert preview["mode"] == "preview"
+    assert preview["preview"]["final"] is False
+    assert "export" not in preview
     assert preview["sha256"]
+    assert preview["image_sha256"] == preview["sha256"]
+    assert "image_base64" not in preview
     assert preview["content_type"] == "image/png"
+    assert exported["mode"] == "export"
+    assert exported["export"]["final"] is True
+    assert exported["export"]["suggested_filename"].endswith(".png")
+    assert exported["export"]["cache_key"]
     assert exported["image_base64"]
 
 
@@ -164,6 +185,8 @@ def test_normalize_image_spec_supports_custom_canvas_and_profile_key():
     assert result.data["spec"]["layers"][0]["kind"] == "text"
     assert result.data["spec"]["key"] == user.profile.key
     assert "profile_id" not in result.data["render_params"]
+    assert result.data["access"]["mode"] == "keyed"
+    assert result.data["access"]["profile_resolved"] is True
     assert result.data["output"]["width"] == 640
     assert result.data["output"]["height"] == 360
 
@@ -218,6 +241,7 @@ def test_render_image_preview_returns_metadata_and_optional_image(monkeypatch):
     assert data["output"]["height"] == 315
     assert decoded.startswith(b"\x89PNG")
     assert data["data_uri"].startswith("data:image/png;base64,")
+    assert data["preview"]["export_required_for_publish"] is True
 
 
 @pytest.mark.django_db(transaction=True)
@@ -231,6 +255,10 @@ def test_export_image_always_returns_base64_payload(monkeypatch):
     assert result.data["image_base64"]
     assert result.data["extension"] == "png"
     assert result.data["sha256"]
+    assert result.data["image_sha256"] == result.data["sha256"]
+    assert result.data["spec_sha256"]
+    assert result.data["export"]["content_type"] == "image/png"
+    assert result.data["export"]["image_sha256"] == result.data["sha256"]
 
 
 @pytest.mark.django_db(transaction=True)

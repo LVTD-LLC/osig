@@ -49,6 +49,9 @@ def test_warns_at_80_percent_daily_limit(client, disable_async_and_image_router)
     assert responses[-1]["usage"]["warnings"] == ["daily"]
     assert responses[-1]["usage"]["daily_count"] == 4
     assert responses[-1]["usage"]["daily_limit"] == 5
+    assert responses[-1]["access"]["mode"] == "keyed"
+    assert responses[-1]["access"]["quota"]["tracked"] is True
+    assert responses[-1]["access"]["watermark"]["applied"] is True
 
 
 @pytest.mark.django_db
@@ -90,6 +93,9 @@ def test_unsigned_or_no_key_requests_remain_backward_compatible(client, disable_
 
     assert response["content_type"] == "image/png"
     assert response["usage"] is None
+    assert response["access"]["mode"] == "trial"
+    assert response["access"]["quota"]["tracked"] is False
+    assert response["access"]["watermark"]["reason"] == "trial_no_key"
 
 
 def test_admin_visibility_is_sorted_for_top_keys():

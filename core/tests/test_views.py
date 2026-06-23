@@ -5,6 +5,7 @@ from django.contrib.sites.models import Site
 from django.test import RequestFactory, override_settings
 from django.urls import reverse
 
+from core.models import ProfileUsage
 from core.templatetags.seo_tags import site_url
 from core.views import MCP_AGENT_PROMPT
 
@@ -112,9 +113,32 @@ class TestSeoSurface:
         body = response.content.decode()
         assert "Back to OSIG" in body
         assert "Sign out" in body
+        assert "Hosted access" in body
+        assert "Free hosted" in body
+        assert "Applied to rendered images" in body
         assert reverse("account_logout") in body
         assert "Compare plans" not in body
         assert reverse("pricing") not in body
+
+    @override_settings(OSIG_DAILY_USAGE_LIMIT=10, OSIG_MONTHLY_USAGE_LIMIT=100)
+    def test_settings_page_shows_usage_quota_counts(self, client, django_user_model):
+        user = django_user_model.objects.create_user(
+            username="usage-settings-user",
+            email="usage-settings@example.com",
+            password="password",
+        )
+        EmailAddress.objects.create(user=user, email=user.email, primary=True, verified=True)
+        ProfileUsage.objects.create(profile=user.profile, daily_count=3, monthly_count=12)
+        client.force_login(user)
+
+        response = client.get(reverse("settings"))
+
+        assert response.status_code == 200
+        body = response.content.decode()
+        assert "Daily quota" in body
+        assert "3 / 10" in body
+        assert "Monthly quota" in body
+        assert "12 / 100" in body
 
     def test_removed_public_pages_redirect_home(self, client):
         removed_paths = [

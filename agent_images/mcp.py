@@ -9,7 +9,13 @@ from fastmcp.server.dependencies import get_http_request
 from core.mcp_auth import authenticate_mcp_headers
 from core.models import Profile
 
-from .services import ImageSpec, image_contract, normalize_image_spec as normalize_image_spec_service, render_image
+from .services import (
+    ImageSpec,
+    image_access_payload,
+    image_contract,
+    normalize_image_spec as normalize_image_spec_service,
+    render_image,
+)
 
 
 def _get_http_profile() -> Profile | None:
@@ -45,6 +51,7 @@ def create_mcp() -> FastMCP:
             normalized = normalize_image_spec_service(spec, profile=_get_http_profile())
             return {
                 "spec": normalized.spec,
+                "spec_sha256": normalized.spec_sha256,
                 "render_params": normalized.safe_render_params,
                 "warnings": normalized.warnings,
                 "output": {
@@ -52,6 +59,7 @@ def create_mcp() -> FastMCP:
                     "height": normalized.height,
                     "content_type": normalized.content_type,
                 },
+                "access": image_access_payload(normalized),
             }
         finally:
             close_old_connections()
@@ -59,12 +67,25 @@ def create_mcp() -> FastMCP:
     @mcp.tool(timeout=20)
     def render_image_preview(spec: ImageSpec, include_image_base64: bool = True) -> dict[str, Any]:
         """Render an image preview for iteration and return metadata plus optional base64 bytes."""
-        return render_image(spec, profile=_get_http_profile(), include_image_base64=include_image_base64)
+        close_old_connections()
+        try:
+            return render_image(
+                spec,
+                profile=_get_http_profile(),
+                include_image_base64=include_image_base64,
+                output_mode="preview",
+            )
+        finally:
+            close_old_connections()
 
     @mcp.tool(timeout=20)
     def export_image(spec: ImageSpec) -> dict[str, Any]:
         """Render final image bytes for saving into a repository or publishing workflow."""
-        return render_image(spec, profile=_get_http_profile(), include_image_base64=True)
+        close_old_connections()
+        try:
+            return render_image(spec, profile=_get_http_profile(), include_image_base64=True, output_mode="export")
+        finally:
+            close_old_connections()
 
     return mcp
 

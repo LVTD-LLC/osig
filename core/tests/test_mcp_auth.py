@@ -1,5 +1,6 @@
 import pytest
 from django.contrib.auth.models import User
+from django.test import override_settings
 from starlette.responses import JSONResponse
 from starlette.testclient import TestClient
 
@@ -27,8 +28,25 @@ def test_mcp_auth_middleware_rejects_missing_credentials():
     response = client.post("/mcp/")
 
     assert response.status_code == 401
-    assert response.json() == {"detail": "MCP authentication required."}
+    assert response.json() == {
+        "error": "mcp_auth_required",
+        "message": "MCP authentication required.",
+        "authentication": {
+            "accepted": ["Authorization: Bearer <profile_key>", "X-API-Key: <profile_key>"],
+        },
+    }
     assert response.headers["WWW-Authenticate"] == "Bearer"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_mcp_auth_middleware_rejects_invalid_credentials():
+    client = TestClient(McpAuthMiddleware(_ok_app))
+
+    response = client.post("/mcp/", headers={"X-API-Key": "not-a-profile-key"})
+
+    assert response.status_code == 401
+    assert response.json()["error"] == "invalid_mcp_credentials"
+    assert response.headers["WWW-Authenticate"] == 'Bearer error="invalid_token"'
 
 
 @pytest.mark.django_db(transaction=True)
@@ -60,6 +78,15 @@ def test_asgi_application_mounts_mcp_without_auth_middleware():
 
     assert len(mcp_mounts) == 1
     assert not isinstance(mcp_mounts[0].app, McpAuthMiddleware)
+
+
+@override_settings(OSIG_MCP_REQUIRE_AUTH=True)
+def test_asgi_mcp_mount_can_require_profile_key_auth():
+    from osig.asgi import build_hosted_mcp_application
+
+    wrapped = build_hosted_mcp_application(_ok_app)
+
+    assert isinstance(wrapped, McpAuthMiddleware)
 
 
 def test_asgi_mcp_stateless_http_does_not_require_session_affinity():

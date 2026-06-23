@@ -67,7 +67,13 @@ class McpAuthMiddleware:
 
         has_credentials = bool(_bearer_token(headers) or headers.get("x-api-key", "").strip())
         response = JSONResponse(
-            {"detail": "MCP authentication required."},
+            {
+                "error": "invalid_mcp_credentials" if has_credentials else "mcp_auth_required",
+                "message": "MCP authentication required.",
+                "authentication": {
+                    "accepted": ["Authorization: Bearer <profile_key>", "X-API-Key: <profile_key>"],
+                },
+            },
             status_code=401,
             headers={"WWW-Authenticate": 'Bearer error="invalid_token"' if has_credentials else "Bearer"},
         )
