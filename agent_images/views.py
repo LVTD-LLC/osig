@@ -15,10 +15,7 @@ from .services import ImageRenderFailed, ImageSpec, ImageUsageLimitExceeded, ren
 def _profile_for_request(request: HttpRequest):
     if not request.user.is_authenticated:
         return None
-    try:
-        return request.user.profile
-    except Profile.DoesNotExist:
-        return None
+    return Profile.objects.filter(user=request.user).first()
 
 
 @require_POST
@@ -33,7 +30,12 @@ def render_studio_image(request: HttpRequest) -> JsonResponse:
 
     try:
         spec = ImageSpec.model_validate(payload.get("spec") or payload)
-        result = render_image(spec, profile=_profile_for_request(request), include_image_base64=True)
+        result = render_image(
+            spec,
+            profile=_profile_for_request(request),
+            include_image_base64=True,
+            output_mode="studio",
+        )
         return JsonResponse(result)
     except ValidationError as exc:
         return JsonResponse(

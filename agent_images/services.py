@@ -4,12 +4,12 @@ import base64
 import binascii
 import hashlib
 import io
+import json
 from dataclasses import dataclass
 from time import perf_counter
 from typing import Annotated, Any, Literal
 
 from django.conf import settings
-from django.db import close_old_connections
 from PIL import Image as PILImage
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -276,6 +276,7 @@ class ImageSpec(BaseModel):
 @dataclass(frozen=True)
 class NormalizedImageSpec:
     spec: dict[str, Any]
+    spec_sha256: str
     render_params: dict[str, Any]
     safe_render_params: dict[str, Any]
     warnings: list[str]
@@ -337,13 +338,24 @@ def _image_payload_metadata(payload: bytes) -> dict[str, Any]:
         width, height = image.size
         detected_format = (image.format or "").lower()
 
+    sha256 = hashlib.sha256(payload).hexdigest()
     return {
         "width": width,
         "height": height,
         "detected_format": detected_format,
         "byte_size": len(payload),
-        "sha256": hashlib.sha256(payload).hexdigest(),
+        "sha256": sha256,
+        "image_sha256": sha256,
     }
+
+
+def _stable_json_sha256(value: dict[str, Any]) -> str:
+    payload = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _content_fingerprint_spec(public_spec: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in public_spec.items() if key != "key"}
 
 
 def _dimensions_for_spec(spec: ImageSpec) -> tuple[int, int]:
@@ -448,10 +460,15 @@ def image_contract() -> dict[str, Any]:
     dimensions = {
         site: {"width": get_image_dimensions(site)[0], "height": get_image_dimensions(site)[1]} for site in SITE_CHOICES
     }
+    trial_config_enabled = bool(getattr(settings, "OSIG_MCP_TRIAL_ENABLED", True))
+    authentication_required = bool(getattr(settings, "OSIG_MCP_REQUIRE_AUTH", False)) or not trial_config_enabled
+    trial_enabled = trial_config_enabled and not authentication_required
+    tool_names = ["get_image_contract", "normalize_image_spec", "render_image_preview", "export_image"]
 
     return {
         "product": "OSIG Agent Images",
         "purpose": "Deterministic canvas images for AI agents.",
+        "contract_version": "canvas-v1",
         "canvas": {
             "default_site": "x",
             "presets": dimensions,
@@ -515,6 +532,27 @@ def image_contract() -> dict[str, Any]:
             "text_align": list(TEXT_ALIGN_CHOICES),
             "text_valign": list(TEXT_VERTICAL_ALIGN_CHOICES),
         },
+        "schemas": {
+            "image_spec": ImageSpec.model_json_schema(),
+            "response_metadata": {
+                "required": [
+                    "spec",
+                    "spec_sha256",
+                    "warnings",
+                    "content_type",
+                    "extension",
+                    "output",
+                    "access",
+                ],
+                "hashes": {
+                    "spec_sha256": "SHA-256 of the normalized public spec JSON excluding the profile key.",
+                    "image_sha256": "SHA-256 of the rendered image bytes.",
+                    "sha256": "Deprecated compatibility alias for image_sha256.",
+                },
+                "preview": "render_image_preview returns a preview block and optional base64 bytes.",
+                "export": "export_image returns final image bytes plus repository-friendly filename and cache metadata.",
+            },
+        },
         "font_providers": {
             "google": {
                 "font_value_format": "google:<family-slug>",
@@ -528,13 +566,24 @@ def image_contract() -> dict[str, Any]:
         },
         "access": {
             "hosted_mcp_url": "https://osig.app/mcp/",
-            "authentication_required": False,
+            "authentication_required": authentication_required,
+            "trial_enabled": trial_enabled,
+            "accepted_profile_key_headers": ["Authorization: Bearer <profile_key>", "X-API-Key: <profile_key>"],
             "trial_note": (
-                "The hosted MCP endpoint is currently public for trial use. Contract discovery, normalization, "
-                "preview rendering, and image export work without a profile key."
+                "The hosted MCP endpoint is currently public for trial use. Trial calls stay narrow, watermarked, "
+                "and non-production unless OSIG_MCP_REQUIRE_AUTH is enabled."
+                if trial_enabled
+                else "Hosted MCP requires a profile key when OSIG_MCP_REQUIRE_AUTH is enabled or OSIG_MCP_TRIAL_ENABLED is disabled."
             ),
             "profile_key_note": "A profile key is optional unless the user wants quota and paid watermark state.",
             "future_auth_note": "Profile-key auth is expected before paid production MCP access.",
+            "trial_boundaries": {
+                "tool_scope": tool_names,
+                "watermark_applied": True,
+                "quota_tracked_without_profile_key": False,
+                "private_or_admin_tools_exposed": False,
+                "production_positioning": "Use a paid profile key for hosted production output without watermarking.",
+            },
         },
         "workflow": [
             "Call get_image_contract to inspect canvas limits, layer kinds, choices, and output formats.",
@@ -573,6 +622,46 @@ def image_contract() -> dict[str, Any]:
                 },
             ],
             "format": "png",
+        },
+    }
+
+
+def _profile_has_paid_entitlement(profile: Profile | None) -> bool:
+    return profile is not None and bool(profile.subscription_id)
+
+
+def _access_reason(normalized: NormalizedImageSpec) -> str:
+    if _profile_has_paid_entitlement(normalized.profile):
+        return "paid_subscription"
+    if normalized.profile is not None:
+        return "free_profile"
+    if normalized.spec.get("key"):
+        return "invalid_profile_key"
+    return "trial_no_key"
+
+
+def image_access_payload(
+    normalized: NormalizedImageSpec,
+    usage_state: UsageState | None = None,
+) -> dict[str, Any]:
+    """Return machine-readable hosted access, quota, and watermark state."""
+    reason = _access_reason(normalized)
+    paid_entitlement = reason == "paid_subscription"
+    usage_payload = _usage_payload(usage_state)
+
+    return {
+        "mode": "keyed" if normalized.profile is not None else "trial",
+        "profile_key_supplied": bool(normalized.spec.get("key")),
+        "profile_resolved": normalized.profile is not None,
+        "paid_entitlement": paid_entitlement,
+        "entitlement_reason": reason,
+        "watermark": {
+            "applied": not paid_entitlement,
+            "reason": "paid_subscription" if paid_entitlement else reason,
+        },
+        "quota": {
+            "tracked": usage_payload is not None,
+            "state": usage_payload,
         },
     }
 
@@ -618,6 +707,7 @@ def normalize_image_spec(spec: ImageSpec, profile: Profile | None = None) -> Nor
 
     return NormalizedImageSpec(
         spec=public_spec,
+        spec_sha256=_stable_json_sha256(_content_fingerprint_spec(public_spec)),
         render_params=render_params,
         safe_render_params=_safe_render_params(render_params),
         warnings=warnings,
@@ -649,86 +739,105 @@ def render_image(
     profile: Profile | None = None,
     include_image_base64: bool = True,
     track_usage: bool = True,
+    output_mode: Literal["preview", "export", "studio"] = "preview",
 ) -> dict[str, Any]:
-    close_old_connections()
     started_at = perf_counter()
     normalized: NormalizedImageSpec | None = None
     usage_state: UsageState | None = None
 
-    try:
-        normalized = normalize_image_spec(spec, profile=profile)
-        if track_usage and normalized.profile is not None:
-            usage_state = track_profile_usage(normalized.profile)
-            if usage_state.blocked:
-                raise ImageUsageLimitExceeded(usage_state)
+    normalized = normalize_image_spec(spec, profile=profile)
+    if track_usage and normalized.profile is not None:
+        usage_state = track_profile_usage(normalized.profile)
+        if usage_state.blocked:
+            raise ImageUsageLimitExceeded(usage_state)
 
-        max_attempts = max(1, int(getattr(settings, "OSIG_RENDER_MAX_ATTEMPTS", 2)))
+    max_attempts = max(1, int(getattr(settings, "OSIG_RENDER_MAX_ATTEMPTS", 2)))
 
-        for attempt_number in range(1, max_attempts + 1):
-            attempt_started_at = perf_counter()
-            try:
-                image_buffer = render_canvas_image(normalized.render_params)
-                payload = image_buffer.getvalue()
-                render_duration_ms = int((perf_counter() - attempt_started_at) * 1000)
-            except Exception as exc:
-                duration_ms = int((perf_counter() - attempt_started_at) * 1000)
-                error_type = classify_render_error(exc)
+    for attempt_number in range(1, max_attempts + 1):
+        attempt_started_at = perf_counter()
+        try:
+            image_buffer = render_canvas_image(normalized.render_params)
+            payload = image_buffer.getvalue()
+            render_duration_ms = int((perf_counter() - attempt_started_at) * 1000)
+        except Exception as exc:
+            duration_ms = int((perf_counter() - attempt_started_at) * 1000)
+            error_type = classify_render_error(exc)
 
-                _record_render_attempt_safely(
-                    profile=normalized.profile,
-                    key=normalized.spec.get("key", ""),
-                    renderer="canvas",
-                    success=False,
-                    duration_ms=duration_ms,
-                    error_type=error_type,
-                    attempt_number=attempt_number,
-                )
+            _record_render_attempt_safely(
+                profile=normalized.profile,
+                key=normalized.spec.get("key", ""),
+                renderer="canvas",
+                success=False,
+                duration_ms=duration_ms,
+                error_type=error_type,
+                attempt_number=attempt_number,
+            )
 
-                should_retry = is_transient_error(error_type) and attempt_number < max_attempts
-                logger.warning(
-                    "Agent image render failed",
-                    error_type=error_type,
-                    attempt_number=attempt_number,
-                    max_attempts=max_attempts,
-                    should_retry=should_retry,
-                    error=str(exc),
-                )
-                if should_retry:
-                    continue
+            should_retry = is_transient_error(error_type) and attempt_number < max_attempts
+            logger.warning(
+                "Agent image render failed",
+                error_type=error_type,
+                attempt_number=attempt_number,
+                max_attempts=max_attempts,
+                should_retry=should_retry,
+                error=str(exc),
+            )
+            if should_retry:
+                continue
 
-                raise ImageRenderFailed(error_type) from exc
-            else:
-                metadata = _image_payload_metadata(payload)
-                _record_render_attempt_safely(
-                    profile=normalized.profile,
-                    key=normalized.spec.get("key", ""),
-                    renderer="canvas",
-                    success=True,
-                    duration_ms=render_duration_ms,
-                    attempt_number=attempt_number,
-                )
+            raise ImageRenderFailed(error_type) from exc
+        else:
+            metadata = _image_payload_metadata(payload)
+            _record_render_attempt_safely(
+                profile=normalized.profile,
+                key=normalized.spec.get("key", ""),
+                renderer="canvas",
+                success=True,
+                duration_ms=render_duration_ms,
+                attempt_number=attempt_number,
+            )
 
-                response: dict[str, Any] = {
-                    "spec": normalized.spec,
-                    "render_params": normalized.safe_render_params,
-                    "warnings": [*normalized.warnings, *(usage_state.warnings if usage_state else [])],
+            response: dict[str, Any] = {
+                "mode": output_mode,
+                "spec": normalized.spec,
+                "spec_sha256": normalized.spec_sha256,
+                "render_params": normalized.safe_render_params,
+                "warnings": [*normalized.warnings, *(usage_state.warnings if usage_state else [])],
+                "content_type": normalized.content_type,
+                "extension": _extension_for_format(spec.format),
+                "render_ms": int((perf_counter() - started_at) * 1000),
+                "output": {
+                    "width": normalized.width,
+                    "height": normalized.height,
                     "content_type": normalized.content_type,
-                    "extension": _extension_for_format(spec.format),
-                    "render_ms": int((perf_counter() - started_at) * 1000),
-                    "output": {
-                        "width": normalized.width,
-                        "height": normalized.height,
-                        "content_type": normalized.content_type,
-                    },
-                    "usage": _usage_payload(usage_state),
-                    **metadata,
+                },
+                "access": image_access_payload(normalized, usage_state),
+                "usage": _usage_payload(usage_state),
+                **metadata,
+            }
+
+            if output_mode == "export":
+                response["export"] = {
+                    "final": True,
+                    "suggested_filename": (
+                        f"osig-{normalized.spec_sha256[:12]}-{metadata['sha256'][:12]}."
+                        f"{_extension_for_format(spec.format)}"
+                    ),
+                    "cache_key": f"{normalized.spec_sha256[:16]}-{metadata['sha256'][:16]}",
+                    "content_type": normalized.content_type,
+                    "byte_size": metadata["byte_size"],
+                    "image_sha256": metadata["sha256"],
+                }
+            elif output_mode == "preview":
+                response["preview"] = {
+                    "final": False,
+                    "export_required_for_publish": True,
+                    "message": "Use export_image after preview approval to produce final repository bytes.",
                 }
 
-                if include_image_base64:
-                    encoded_image = base64.b64encode(payload).decode("ascii")
-                    response["image_base64"] = encoded_image
-                    response["data_uri"] = f"data:{normalized.content_type};base64,{encoded_image}"
+            if include_image_base64:
+                encoded_image = base64.b64encode(payload).decode("ascii")
+                response["image_base64"] = encoded_image
+                response["data_uri"] = f"data:{normalized.content_type};base64,{encoded_image}"
 
-                return response
-    finally:
-        close_old_connections()
+            return response

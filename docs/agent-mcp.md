@@ -12,7 +12,7 @@ Production MCP endpoint:
 https://osig.app/mcp/
 ```
 
-Hosted MCP accepts a profile key through `X-API-Key` or `Authorization: Bearer ...` for quota and paid watermark state. Keep hosted tool scope narrow while the trial remains public.
+Hosted MCP accepts a profile key through `X-API-Key` or `Authorization: Bearer ...` for quota and paid watermark state. Keep hosted tool scope narrow while the trial remains public. Set `OSIG_MCP_REQUIRE_AUTH=True`, or set `OSIG_MCP_TRIAL_ENABLED=False`, before treating hosted MCP as paid production access.
 
 Example MCP client config:
 
@@ -108,10 +108,10 @@ uv run fastmcp list --command "sh -c 'set -a; . ./.env.example; set +a; export D
 
 ## Tools
 
-- `get_image_contract`: returns canvas limits, layer kinds, choices, dimensions, fields, and the recommended workflow.
-- `normalize_image_spec`: canonicalizes renderer inputs and returns warnings before rendering.
-- `render_image_preview`: renders a preview and returns metadata plus optional base64 image bytes.
-- `export_image`: renders final image bytes, content type, dimensions, byte size, and hash.
+- `get_image_contract`: returns canvas limits, layer kinds, choices, dimensions, JSON schema, trial boundaries, and the recommended workflow.
+- `normalize_image_spec`: canonicalizes renderer inputs and returns warnings, `spec_sha256`, output metadata, and access state before rendering.
+- `render_image_preview`: renders an iteration preview and returns a `preview` block, metadata, hashes, access state, quota state, and optional base64 image bytes.
+- `export_image`: renders final repository bytes and returns an `export` block with suggested filename, cache key, content type, dimensions, byte size, and deterministic hashes.
 
 Admin render metrics are not exposed through the unauthenticated MCP server.
 
@@ -125,6 +125,8 @@ Admin render metrics are not exposed through the unauthenticated MCP server.
 6. Call `render_image_preview` while iterating.
 7. Call `export_image` once the preview is ready.
 8. Save the returned bytes into the repository and point `og:image`, `twitter:image`, and schema image fields at that committed/static asset.
+
+Preview responses are not the production publishing signal. Use the `preview.final=false` metadata to iterate cheaply, then call `export_image` and use the returned `export.suggested_filename`, `export.cache_key`, content-scoped `spec_sha256`, and `image_sha256` for commit-ready assets and cache-busting. `spec_sha256` excludes the profile key so key rotation does not change the content fingerprint.
 
 ## Canvas Spec
 
@@ -237,3 +239,5 @@ process-local session affinity failures when the hosted ASGI app runs multiple
 Gunicorn workers.
 
 The ASGI mount requires an async server such as Gunicorn with `uvicorn_worker.UvicornWorker`.
+
+Set `OSIG_MCP_REQUIRE_AUTH=True`, or set `OSIG_MCP_TRIAL_ENABLED=False`, to wrap the hosted ASGI MCP mount in profile-key auth. Missing credentials return a machine-readable `mcp_auth_required` error. Invalid bearer or `X-API-Key` credentials return `invalid_mcp_credentials`.

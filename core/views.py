@@ -4,6 +4,7 @@ from urllib.parse import urlencode
 import stripe
 from allauth.account.models import EmailAddress
 from allauth.account.utils import send_email_confirmation
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -16,7 +17,7 @@ from djstripe import models as djstripe_models, settings as djstripe_settings
 from PIL import Image
 
 from core.forms import ProfileUpdateForm
-from core.models import Profile
+from core.models import Profile, ProfileUsage
 
 stripe.api_key = djstripe_settings.djstripe_settings.STRIPE_SECRET_KEY
 
@@ -66,7 +67,23 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
 
         context["email_verified"] = email_address.verified
         context["resend_confirmation_url"] = reverse("resend_confirmation")
-        context["has_pro_subscription"] = user.profile.subscription is not None
+        profile = user.profile
+        has_pro_subscription = profile.subscription is not None
+        context["has_pro_subscription"] = has_pro_subscription
+        try:
+            usage = profile.usage
+        except ProfileUsage.DoesNotExist:
+            usage = None
+
+        context["hosted_access"] = {
+            "plan_label": "Paid hosted" if has_pro_subscription else "Free hosted",
+            "watermark_label": "Removed" if has_pro_subscription else "Applied to rendered images",
+            "quota_label": "Tracked for keyed MCP and Studio renders",
+            "daily_count": usage.daily_count if usage else 0,
+            "daily_limit": settings.OSIG_DAILY_USAGE_LIMIT,
+            "monthly_count": usage.monthly_count if usage else 0,
+            "monthly_limit": settings.OSIG_MONTHLY_USAGE_LIMIT,
+        }
 
         return context
 
