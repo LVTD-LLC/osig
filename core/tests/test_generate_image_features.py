@@ -76,6 +76,9 @@ def test_studio_render_api_returns_image_payload(client, monkeypatch):
 
     assert payload["content_type"] == "image/png"
     assert payload["data_uri"].startswith("data:image/png;base64,")
+    assert payload["mode"] == "studio"
+    assert "preview" not in payload
+    assert "export" not in payload
     assert decoded.startswith(b"\x89PNG")
 
 
@@ -145,6 +148,16 @@ class TestAgentImageService:
         assert normalized.spec["key"] == user.profile.key
         assert normalized.safe_render_params["layers"][0]["x"] == 24
         assert "profile_id" not in normalized.safe_render_params
+
+    def test_spec_sha256_is_content_scoped_not_profile_key_scoped(self):
+        first = User.objects.create_user(username="hash-user-1", email="hash1@example.com", password="pass123")
+        second = User.objects.create_user(username="hash-user-2", email="hash2@example.com", password="pass123")
+
+        first_normalized = normalize_image_spec(ImageSpec.model_validate(_canvas_spec(key=first.profile.key)))
+        second_normalized = normalize_image_spec(ImageSpec.model_validate(_canvas_spec(key=second.profile.key)))
+
+        assert first_normalized.spec["key"] != second_normalized.spec["key"]
+        assert first_normalized.spec_sha256 == second_normalized.spec_sha256
 
     def test_normalize_image_spec_defaults_to_x_preset_when_dimensions_are_omitted(self):
         normalized = normalize_image_spec(

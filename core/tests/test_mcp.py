@@ -4,6 +4,7 @@ import io
 
 import pytest
 from django.contrib.auth.models import User
+from django.test import override_settings
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
 from PIL import Image
@@ -95,6 +96,9 @@ def test_get_image_contract_describes_canvas_workflow():
     assert result.data["contract_version"] == "canvas-v1"
     assert "image_spec" in result.data["schemas"]
     assert result.data["schemas"]["response_metadata"]["hashes"]["spec_sha256"]
+    assert result.data["schemas"]["response_metadata"]["hashes"]["sha256"] == (
+        "Deprecated compatibility alias for image_sha256."
+    )
     assert result.data["access"]["accepted_profile_key_headers"] == [
         "Authorization: Bearer <profile_key>",
         "X-API-Key: <profile_key>",
@@ -102,6 +106,15 @@ def test_get_image_contract_describes_canvas_workflow():
     assert result.data["access"]["trial_boundaries"]["watermark_applied"] is True
     assert result.data["access"]["trial_boundaries"]["private_or_admin_tools_exposed"] is False
     assert "export_image" in " ".join(result.data["workflow"])
+
+
+@override_settings(OSIG_MCP_TRIAL_ENABLED=False, OSIG_MCP_REQUIRE_AUTH=False)
+def test_get_image_contract_matches_disabled_trial_auth_enforcement():
+    result = _run(_call_tool("get_image_contract"))
+
+    assert result.data["access"]["authentication_required"] is True
+    assert result.data["access"]["trial_enabled"] is False
+    assert "OSIG_MCP_TRIAL_ENABLED is disabled" in result.data["access"]["trial_note"]
 
 
 @pytest.mark.django_db(transaction=True)

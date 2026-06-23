@@ -12,7 +12,7 @@ Production MCP endpoint:
 https://osig.app/mcp/
 ```
 
-Hosted MCP accepts a profile key through `X-API-Key` or `Authorization: Bearer ...` for quota and paid watermark state. Keep hosted tool scope narrow while the trial remains public. Set `OSIG_MCP_REQUIRE_AUTH=True` before treating hosted MCP as paid production access.
+Hosted MCP accepts a profile key through `X-API-Key` or `Authorization: Bearer ...` for quota and paid watermark state. Keep hosted tool scope narrow while the trial remains public. Set `OSIG_MCP_REQUIRE_AUTH=True`, or set `OSIG_MCP_TRIAL_ENABLED=False`, before treating hosted MCP as paid production access.
 
 Example MCP client config:
 
@@ -126,7 +126,7 @@ Admin render metrics are not exposed through the unauthenticated MCP server.
 7. Call `export_image` once the preview is ready.
 8. Save the returned bytes into the repository and point `og:image`, `twitter:image`, and schema image fields at that committed/static asset.
 
-Preview responses are not the production publishing signal. Use the `preview.final=false` metadata to iterate cheaply, then call `export_image` and use the returned `export.suggested_filename`, `export.cache_key`, `spec_sha256`, and `image_sha256` for commit-ready assets and cache-busting.
+Preview responses are not the production publishing signal. Use the `preview.final=false` metadata to iterate cheaply, then call `export_image` and use the returned `export.suggested_filename`, `export.cache_key`, content-scoped `spec_sha256`, and `image_sha256` for commit-ready assets and cache-busting. `spec_sha256` excludes the profile key so key rotation does not change the content fingerprint.
 
 ## Canvas Spec
 
@@ -240,4 +240,4 @@ Gunicorn workers.
 
 The ASGI mount requires an async server such as Gunicorn with `uvicorn_worker.UvicornWorker`.
 
-Set `OSIG_MCP_REQUIRE_AUTH=True` to wrap the hosted ASGI MCP mount in profile-key auth. Missing credentials return a machine-readable `mcp_auth_required` error. Invalid bearer or `X-API-Key` credentials return `invalid_mcp_credentials`.
+Set `OSIG_MCP_REQUIRE_AUTH=True`, or set `OSIG_MCP_TRIAL_ENABLED=False`, to wrap the hosted ASGI MCP mount in profile-key auth. Missing credentials return a machine-readable `mcp_auth_required` error. Invalid bearer or `X-API-Key` credentials return `invalid_mcp_credentials`.

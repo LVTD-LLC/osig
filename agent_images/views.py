@@ -30,7 +30,12 @@ def render_studio_image(request: HttpRequest) -> JsonResponse:
 
     try:
         spec = ImageSpec.model_validate(payload.get("spec") or payload)
-        result = render_image(spec, profile=_profile_for_request(request), include_image_base64=True)
+        result = render_image(
+            spec,
+            profile=_profile_for_request(request),
+            include_image_base64=True,
+            output_mode="studio",
+        )
         return JsonResponse(result)
     except ValidationError as exc:
         return JsonResponse(

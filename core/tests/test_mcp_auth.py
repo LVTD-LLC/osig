@@ -89,6 +89,15 @@ def test_asgi_mcp_mount_can_require_profile_key_auth():
     assert isinstance(wrapped, McpAuthMiddleware)
 
 
+@override_settings(OSIG_MCP_TRIAL_ENABLED=False, OSIG_MCP_REQUIRE_AUTH=False)
+def test_asgi_mcp_mount_requires_auth_when_trial_is_disabled():
+    from osig.asgi import build_hosted_mcp_application
+
+    wrapped = build_hosted_mcp_application(_ok_app)
+
+    assert isinstance(wrapped, McpAuthMiddleware)
+
+
 def test_asgi_mcp_stateless_http_does_not_require_session_affinity():
     from osig.asgi import mcp_application
 

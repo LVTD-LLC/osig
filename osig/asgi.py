@@ -29,7 +29,7 @@ mcp_transport_application = mcp.http_app(path="/", stateless_http=True)
 
 
 def build_hosted_mcp_application(app):
-    if settings.OSIG_MCP_REQUIRE_AUTH:
+    if settings.OSIG_MCP_REQUIRE_AUTH or not settings.OSIG_MCP_TRIAL_ENABLED:
         return McpAuthMiddleware(app)
     return app
 

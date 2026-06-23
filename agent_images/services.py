@@ -354,6 +354,10 @@ def _stable_json_sha256(value: dict[str, Any]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def _content_fingerprint_spec(public_spec: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in public_spec.items() if key != "key"}
+
+
 def _dimensions_for_spec(spec: ImageSpec) -> tuple[int, int]:
     if spec.width is not None and spec.height is not None:
         return spec.width, spec.height
@@ -456,8 +460,9 @@ def image_contract() -> dict[str, Any]:
     dimensions = {
         site: {"width": get_image_dimensions(site)[0], "height": get_image_dimensions(site)[1]} for site in SITE_CHOICES
     }
-    authentication_required = bool(getattr(settings, "OSIG_MCP_REQUIRE_AUTH", False))
-    trial_enabled = bool(getattr(settings, "OSIG_MCP_TRIAL_ENABLED", True)) and not authentication_required
+    trial_config_enabled = bool(getattr(settings, "OSIG_MCP_TRIAL_ENABLED", True))
+    authentication_required = bool(getattr(settings, "OSIG_MCP_REQUIRE_AUTH", False)) or not trial_config_enabled
+    trial_enabled = trial_config_enabled and not authentication_required
     tool_names = ["get_image_contract", "normalize_image_spec", "render_image_preview", "export_image"]
 
     return {
@@ -540,8 +545,9 @@ def image_contract() -> dict[str, Any]:
                     "access",
                 ],
                 "hashes": {
-                    "spec_sha256": "SHA-256 of the normalized public spec JSON.",
+                    "spec_sha256": "SHA-256 of the normalized public spec JSON excluding the profile key.",
                     "image_sha256": "SHA-256 of the rendered image bytes.",
+                    "sha256": "Deprecated compatibility alias for image_sha256.",
                 },
                 "preview": "render_image_preview returns a preview block and optional base64 bytes.",
                 "export": "export_image returns final image bytes plus repository-friendly filename and cache metadata.",
@@ -567,7 +573,7 @@ def image_contract() -> dict[str, Any]:
                 "The hosted MCP endpoint is currently public for trial use. Trial calls stay narrow, watermarked, "
                 "and non-production unless OSIG_MCP_REQUIRE_AUTH is enabled."
                 if trial_enabled
-                else "Hosted MCP requires a profile key when OSIG_MCP_REQUIRE_AUTH is enabled."
+                else "Hosted MCP requires a profile key when OSIG_MCP_REQUIRE_AUTH is enabled or OSIG_MCP_TRIAL_ENABLED is disabled."
             ),
             "profile_key_note": "A profile key is optional unless the user wants quota and paid watermark state.",
             "future_auth_note": "Profile-key auth is expected before paid production MCP access.",
@@ -701,7 +707,7 @@ def normalize_image_spec(spec: ImageSpec, profile: Profile | None = None) -> Nor
 
     return NormalizedImageSpec(
         spec=public_spec,
-        spec_sha256=_stable_json_sha256(public_spec),
+        spec_sha256=_stable_json_sha256(_content_fingerprint_spec(public_spec)),
         render_params=render_params,
         safe_render_params=_safe_render_params(render_params),
         warnings=warnings,
@@ -733,7 +739,7 @@ def render_image(
     profile: Profile | None = None,
     include_image_base64: bool = True,
     track_usage: bool = True,
-    output_mode: Literal["preview", "export"] = "preview",
+    output_mode: Literal["preview", "export", "studio"] = "preview",
 ) -> dict[str, Any]:
     started_at = perf_counter()
     normalized: NormalizedImageSpec | None = None
@@ -822,7 +828,7 @@ def render_image(
                     "byte_size": metadata["byte_size"],
                     "image_sha256": metadata["sha256"],
                 }
-            else:
+            elif output_mode == "preview":
                 response["preview"] = {
                     "final": False,
                     "export_required_for_publish": True,
