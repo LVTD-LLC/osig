@@ -223,6 +223,18 @@ def test_og_template_content_validates_image_sources_early():
     assert "Image URLs must use HTTPS" in str(exc_info.value)
 
 
+def test_og_template_layout_uses_x_dimensions_as_scale_reference(monkeypatch):
+    import agent_images.templates as template_module
+
+    def dimensions_for(site):
+        return (1200, 630) if site == "x" else (600, 315)
+
+    monkeypatch.setattr(template_module, "get_image_dimensions", dimensions_for)
+
+    assert template_module._base_layout("x") == (1200, 630, 1.0, 1.0)
+    assert template_module._base_layout("meta") == (600, 315, 0.5, 0.5)
+
+
 @pytest.mark.django_db(transaction=True)
 def test_trial_mcp_core_tools_work_without_authentication_or_key(monkeypatch):
     import agent_images.services as agent_services

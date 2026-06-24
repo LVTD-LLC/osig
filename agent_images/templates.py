@@ -86,7 +86,8 @@ def _font_size(value: int, ratio: float) -> int:
 
 def _base_layout(site: TemplateSite) -> tuple[int, int, float, float]:
     width, height = get_image_dimensions(site)
-    return width, height, width / 800, height / 450
+    reference_width, reference_height = get_image_dimensions("x")
+    return width, height, width / reference_width, height / reference_height
 
 
 def _tag_layers(tags: list[str], *, x: int, y: int, scale_x: float, scale_y: float) -> list[dict[str, Any]]:

@@ -30,6 +30,12 @@ def _tiny_png_buffer():
 
 def test_p95_duration_returns_none_when_percentile_row_disappears():
     class PrunedQuerySet:
+        def aggregate(self, **kwargs):
+            return {"max_id": 1}
+
+        def filter(self, **kwargs):
+            return self
+
         def count(self):
             return 1
 

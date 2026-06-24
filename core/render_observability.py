@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 import requests
-from django.db.models import Count
+from django.db.models import Count, Max
 from django.utils import timezone
 from PIL import UnidentifiedImageError
 
@@ -102,13 +102,18 @@ def record_render_attempt(
 
 
 def _p95_duration(queryset) -> int | None:
-    count = queryset.count()
+    max_id = queryset.aggregate(max_id=Max("id"))["max_id"]
+    if max_id is None:
+        return None
+
+    snapshot_queryset = queryset.filter(id__lte=max_id)
+    count = snapshot_queryset.count()
     if not count:
         return None
 
     index = max(0, math.ceil(count * 0.95) - 1)
     try:
-        return queryset.order_by("duration_ms").values_list("duration_ms", flat=True)[index]
+        return snapshot_queryset.order_by("duration_ms").values_list("duration_ms", flat=True)[index]
     except IndexError:
         return None
 
