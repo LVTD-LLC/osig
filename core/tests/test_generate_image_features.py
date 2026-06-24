@@ -134,6 +134,28 @@ def test_format_validation_errors_preserves_exclusive_bounds():
     ]
 
 
+def test_format_validation_errors_preserves_fields_named_like_union_labels():
+    details = format_validation_errors(
+        [
+            {
+                "loc": ("layers", 0, "text", "text"),
+                "msg": "Field required",
+                "type": "missing",
+            }
+        ]
+    )
+
+    assert details == [
+        {
+            "field": "layers[0].text",
+            "message": "Field required",
+            "type": "missing",
+            "fallback_normalization_applied": False,
+            "expected": "required field",
+        }
+    ]
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize("payload", [None, [], 42, "string"])
 def test_studio_render_api_rejects_non_object_json(client, payload):

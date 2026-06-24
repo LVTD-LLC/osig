@@ -52,7 +52,12 @@ MAX_LAYER_PIXELS = MAX_CANVAS_PIXELS
 MAX_LAYERS = 50
 MAX_INLINE_IMAGE_BYTES = 2_000_000
 
-_UNION_LOCATION_LABELS = {"rect", "text", "image", "base64", "LinearGradientFill", "str"}
+_LAYER_UNION_LOCATION_LABELS = {"rect", "text", "image"}
+_IMAGE_SOURCE_UNION_LOCATION_LABELS = {"base64"}
+_FILL_UNION_LOCATION_LABELS = {"LinearGradientFill", "str"}
+_UNION_LOCATION_LABELS = (
+    _LAYER_UNION_LOCATION_LABELS | _IMAGE_SOURCE_UNION_LOCATION_LABELS | _FILL_UNION_LOCATION_LABELS
+)
 
 logger = get_osig_logger(__name__)
 
@@ -324,7 +329,7 @@ def _extension_for_format(output_format: str) -> str:
 def _validation_field_path(location: tuple[Any, ...] | list[Any]) -> str:
     parts: list[str] = []
     for index, part in enumerate(location):
-        if part in _UNION_LOCATION_LABELS:
+        if _is_pydantic_union_location_label(location, index):
             continue
         if part == "url" and index + 1 < len(location) and location[index + 1] == "url":
             continue
@@ -337,6 +342,24 @@ def _validation_field_path(location: tuple[Any, ...] | list[Any]) -> str:
             parts.append(str(part))
 
     return ".".join(parts) if parts else "spec"
+
+
+def _is_pydantic_union_location_label(location: tuple[Any, ...] | list[Any], index: int) -> bool:
+    part = location[index]
+    if part not in _UNION_LOCATION_LABELS:
+        return False
+
+    previous = location[index - 1] if index > 0 else None
+    grandparent = location[index - 2] if index > 1 else None
+
+    if part in _LAYER_UNION_LOCATION_LABELS:
+        return grandparent == "layers" and isinstance(previous, int)
+    if part in _IMAGE_SOURCE_UNION_LOCATION_LABELS:
+        return previous == "src"
+    if part in _FILL_UNION_LOCATION_LABELS:
+        return previous == "fill"
+
+    return False
 
 
 def _field_hint_key(field: str) -> str:

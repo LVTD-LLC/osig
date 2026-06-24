@@ -4,7 +4,7 @@ from copy import deepcopy
 from functools import lru_cache
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator
 
 from core.image_utils import get_image_dimensions
 
@@ -32,6 +32,17 @@ class OgTemplateContent(BaseModel):
     @classmethod
     def normalize_tags(cls, tags: list[str]) -> list[str]:
         return [tag.strip() for tag in tags if tag.strip()]
+
+    @field_validator("logo", "image")
+    @classmethod
+    def validate_image_source(cls, source: dict[str, Any] | None) -> dict[str, Any] | None:
+        if source is None:
+            return None
+
+        from agent_images.services import ImageSource
+
+        validated_source = TypeAdapter(ImageSource).validate_python(source)
+        return validated_source.model_dump()
 
 
 TEMPLATE_LIBRARY: dict[str, dict[str, Any]] = {

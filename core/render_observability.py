@@ -101,13 +101,13 @@ def record_render_attempt(
     )
 
 
-def _p95(values: list[int]) -> int | None:
-    if not values:
+def _p95_duration(queryset) -> int | None:
+    count = queryset.count()
+    if not count:
         return None
 
-    sorted_values = sorted(values)
-    index = max(0, math.ceil(len(sorted_values) * 0.95) - 1)
-    return sorted_values[index]
+    index = max(0, math.ceil(count * 0.95) - 1)
+    return queryset.order_by("duration_ms").values_list("duration_ms", flat=True)[index]
 
 
 def build_render_metrics(*, window_hours: int = 24) -> RenderMetrics:
@@ -118,7 +118,7 @@ def build_render_metrics(*, window_hours: int = 24) -> RenderMetrics:
     failed_attempts = queryset.filter(success=False).count()
 
     fail_rate_percent = round((failed_attempts / total_attempts) * 100, 2) if total_attempts else 0.0
-    durations = list(queryset.filter(success=True).values_list("duration_ms", flat=True))
+    successful_renders = queryset.filter(success=True)
 
     error_counts = {
         item["error_type"]: item["count"]
@@ -143,7 +143,7 @@ def build_render_metrics(*, window_hours: int = 24) -> RenderMetrics:
         total_attempts=total_attempts,
         failed_attempts=failed_attempts,
         fail_rate_percent=fail_rate_percent,
-        p95_render_ms=_p95(durations),
+        p95_render_ms=_p95_duration(successful_renders),
         error_counts=error_counts,
         recent_failures=recent_failures,
         troubleshooting_hints=troubleshooting_hints,

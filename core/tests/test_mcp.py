@@ -174,6 +174,17 @@ def test_template_library_contract_returns_independent_copy():
     assert second_contract[0]["example_specs"]["x"]["layers"]
 
 
+def test_og_template_content_validates_image_sources_early():
+    from pydantic import ValidationError
+
+    from agent_images.templates import OgTemplateContent
+
+    with pytest.raises(ValidationError) as exc_info:
+        OgTemplateContent(title="Launch", logo={"type": "url", "url": "http://internal-service/logo.png"})
+
+    assert "Image URLs must use HTTPS" in str(exc_info.value)
+
+
 @pytest.mark.django_db(transaction=True)
 def test_trial_mcp_core_tools_work_without_authentication_or_key(monkeypatch):
     import agent_images.services as agent_services
