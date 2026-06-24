@@ -24,15 +24,28 @@
     {% include "components/confirm-email.html" with email_verified=email_verified %}
 
     <section class="panel mt-8 p-5">
-      <h2 class="text-lg font-bold">Hosted access</h2>
+      <div>
+        <h2 class="text-lg font-bold">Hosted access</h2>
+        <p class="mt-2 text-sm leading-6 text-[var(--osig-muted)]">
+          Use these details when wiring agents, MCP clients, or the Studio API to your hosted profile.
+        </p>
+      </div>
       <dl class="mt-5 grid gap-4 sm:grid-cols-2">
         <div>
           <dt class="text-xs font-semibold uppercase text-[var(--osig-soft)]">Plan</dt>
           <dd class="mt-1 text-sm text-[var(--osig-ink)]">{{ hosted_access.plan_label }}</dd>
         </div>
         <div>
+          <dt class="text-xs font-semibold uppercase text-[var(--osig-soft)]">Billing status</dt>
+          <dd class="mt-1 text-sm text-[var(--osig-ink)]">{{ hosted_access.billing_status }}</dd>
+        </div>
+        <div>
           <dt class="text-xs font-semibold uppercase text-[var(--osig-soft)]">Watermark</dt>
           <dd class="mt-1 text-sm text-[var(--osig-ink)]">{{ hosted_access.watermark_label }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-semibold uppercase text-[var(--osig-soft)]">MCP endpoint</dt>
+          <dd class="mt-1 break-all font-mono text-sm text-[var(--osig-ink)]">{{ hosted_access.mcp_url }}</dd>
         </div>
         <div>
           <dt class="text-xs font-semibold uppercase text-[var(--osig-soft)]">Daily quota</dt>
@@ -44,6 +57,11 @@
         </div>
       </dl>
       <p class="mt-4 text-sm leading-6 text-[var(--osig-muted)]">{{ hosted_access.quota_label }}.</p>
+      <ol class="mt-5 list-decimal space-y-2 pl-5 text-sm leading-6 text-[var(--osig-muted)]">
+        <li>Add the MCP endpoint to your agent client.</li>
+        <li>Pass this page's API token as <span class="font-mono">X-API-Key</span>, bearer auth, or the spec <span class="font-mono">key</span>.</li>
+        <li>Call <span class="font-mono">get_image_contract</span>, then preview before export.</li>
+      </ol>
     </section>
 
     {% if not has_pro_subscription %}

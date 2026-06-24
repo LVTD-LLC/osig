@@ -5,6 +5,7 @@ import binascii
 import hashlib
 import io
 import json
+import re
 from dataclasses import dataclass
 from time import perf_counter
 from typing import Annotated, Any, Literal
@@ -50,6 +51,13 @@ MAX_LAYER_EDGE = 4000
 MAX_LAYER_PIXELS = MAX_CANVAS_PIXELS
 MAX_LAYERS = 50
 MAX_INLINE_IMAGE_BYTES = 2_000_000
+
+_LAYER_UNION_LOCATION_LABELS = {"rect", "text", "image"}
+_IMAGE_SOURCE_UNION_LOCATION_LABELS = {"base64"}
+_FILL_UNION_LOCATION_LABELS = {"LinearGradientFill", "str"}
+_UNION_LOCATION_LABELS = (
+    _LAYER_UNION_LOCATION_LABELS | _IMAGE_SOURCE_UNION_LOCATION_LABELS | _FILL_UNION_LOCATION_LABELS
+)
 
 logger = get_osig_logger(__name__)
 
@@ -318,6 +326,146 @@ def _extension_for_format(output_format: str) -> str:
     return "jpg" if output_format == "jpeg" else "png"
 
 
+def _validation_field_path(location: tuple[Any, ...] | list[Any]) -> str:
+    parts: list[str] = []
+    for index, part in enumerate(location):
+        if _is_pydantic_union_location_label(location, index):
+            continue
+        if (
+            part == "url"
+            and index > 0
+            and location[index - 1] == "src"
+            and index + 1 < len(location)
+            and location[index + 1] == "url"
+        ):
+            continue
+        if isinstance(part, int):
+            if parts:
+                parts[-1] = f"{parts[-1]}[{part}]"
+            else:
+                parts.append(f"[{part}]")
+        else:
+            parts.append(str(part))
+
+    return ".".join(parts) if parts else "spec"
+
+
+def _is_pydantic_union_location_label(location: tuple[Any, ...] | list[Any], index: int) -> bool:
+    part = location[index]
+    if part not in _UNION_LOCATION_LABELS:
+        return False
+
+    previous = location[index - 1] if index > 0 else None
+    grandparent = location[index - 2] if index > 1 else None
+
+    if part in _LAYER_UNION_LOCATION_LABELS:
+        return grandparent == "layers" and isinstance(previous, int)
+    if part in _IMAGE_SOURCE_UNION_LOCATION_LABELS:
+        return previous == "src"
+    if part in _FILL_UNION_LOCATION_LABELS:
+        return previous == "fill"
+
+    return False
+
+
+def _field_hint_key(field: str) -> str:
+    return re.sub(r"\[\d+\]", "[*]", field)
+
+
+def _accepted_values_from_expected(expected: str) -> list[str]:
+    return re.findall(r"'([^']+)'", expected)
+
+
+_VALIDATION_FIELD_HINTS: dict[str, dict[str, Any]] = {
+    "site": {"expected": "social size preset", "accepted_values": list(SITE_CHOICES)},
+    "format": {"expected": "output format", "accepted_values": list(FORMAT_CHOICES)},
+    "width": {
+        "expected": "integer custom canvas width",
+        "bounds": {"minimum": MIN_CANVAS_EDGE, "maximum": MAX_CANVAS_EDGE},
+    },
+    "height": {
+        "expected": "integer custom canvas height",
+        "bounds": {"minimum": MIN_CANVAS_EDGE, "maximum": MAX_CANVAS_EDGE},
+    },
+    "layers": {"expected": "array of canvas layers", "bounds": {"maximum_items": MAX_LAYERS}},
+    "layers[*].kind": {"expected": "canvas layer kind", "accepted_values": ["rect", "text", "image"]},
+    "layers[*].fit": {"expected": "image fit mode", "accepted_values": list(IMAGE_FIT_CHOICES)},
+    "layers[*].align": {"expected": "text alignment", "accepted_values": list(TEXT_ALIGN_CHOICES)},
+    "layers[*].valign": {"expected": "text vertical alignment", "accepted_values": list(TEXT_VERTICAL_ALIGN_CHOICES)},
+    "layers[*].src.type": {"expected": "image source type", "accepted_values": ["url", "base64"]},
+    "layers[*].src.url": {"expected": "public HTTPS image URL", "bounds": {"maximum_length": 2000}},
+    "layers[*].src.data": {
+        "expected": "base64 encoded image bytes",
+        "bounds": {"maximum_decoded_bytes": MAX_INLINE_IMAGE_BYTES},
+    },
+}
+
+
+def _validation_expected_and_bounds(error: dict[str, Any], field: str) -> tuple[str | None, list[str], dict[str, Any]]:
+    hint = _VALIDATION_FIELD_HINTS.get(_field_hint_key(field), {})
+    context = error.get("ctx") or {}
+    error_type = error.get("type", "")
+
+    expected = hint.get("expected")
+    accepted_values = list(hint.get("accepted_values") or [])
+    bounds = dict(hint.get("bounds") or {})
+
+    if error_type == "literal_error" and context.get("expected"):
+        expected = f"one of {context['expected']}"
+        accepted_values = _accepted_values_from_expected(str(context["expected"]))
+    elif error_type in {"int_type", "int_parsing"}:
+        expected = "integer"
+    elif error_type in {"float_type", "float_parsing"}:
+        expected = "number"
+    elif error_type == "string_type":
+        expected = "string"
+    elif error_type == "list_type":
+        expected = "array"
+    elif error_type == "missing":
+        expected = "required field"
+
+    if "ge" in context:
+        bounds["minimum"] = context["ge"]
+    if "gt" in context:
+        bounds["exclusive_minimum"] = context["gt"]
+    if "le" in context:
+        bounds["maximum"] = context["le"]
+    if "lt" in context:
+        bounds["exclusive_maximum"] = context["lt"]
+    if "min_length" in context:
+        bounds["minimum_length"] = context["min_length"]
+    if "max_length" in context:
+        bounds["maximum_length"] = context["max_length"]
+
+    return expected, accepted_values, bounds
+
+
+def format_validation_errors(errors: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return stable, machine-readable validation errors for agents and Studio callers."""
+
+    formatted_errors: list[dict[str, Any]] = []
+    for error in errors:
+        field = _validation_field_path(error.get("loc", ()))
+        expected, accepted_values, bounds = _validation_expected_and_bounds(error, field)
+
+        formatted_error: dict[str, Any] = {
+            "field": field,
+            "message": error.get("msg", "Invalid value."),
+            "type": error.get("type", "value_error"),
+            "fallback_normalization_applied": False,
+        }
+        if expected:
+            formatted_error["expected"] = expected
+        if accepted_values:
+            formatted_error["accepted_values"] = accepted_values
+        if bounds:
+            formatted_error["bounds"] = bounds
+
+        formatted_errors.append(formatted_error)
+
+    return formatted_errors
+
+
 def _profile_for_key(key: str, warnings: list[str]) -> Profile | None:
     if not key:
         return None
@@ -457,6 +605,8 @@ def _canvas_warnings(spec: ImageSpec, width: int, height: int) -> list[str]:
 
 
 def image_contract() -> dict[str, Any]:
+    from agent_images.templates import template_library_contract
+
     dimensions = {
         site: {"width": get_image_dimensions(site)[0], "height": get_image_dimensions(site)[1]} for site in SITE_CHOICES
     }
@@ -565,7 +715,7 @@ def image_contract() -> dict[str, Any]:
             }
         },
         "access": {
-            "hosted_mcp_url": "https://osig.app/mcp/",
+            "hosted_mcp_url": settings.OSIG_MCP_URL,
             "authentication_required": authentication_required,
             "trial_enabled": trial_enabled,
             "accepted_profile_key_headers": ["Authorization: Bearer <profile_key>", "X-API-Key: <profile_key>"],
@@ -587,11 +737,13 @@ def image_contract() -> dict[str, Any]:
         },
         "workflow": [
             "Call get_image_contract to inspect canvas limits, layer kinds, choices, and output formats.",
+            "Optionally start from one of the production-quality template specs in template_library.",
             "Build an ImageSpec with dimensions, background, and ordered rect/text/image layers.",
             "Call normalize_image_spec to canonicalize input and surface warnings.",
             "Call render_image_preview while iterating.",
             "Call export_image when the asset is ready to save into a repository.",
         ],
+        "template_library": template_library_contract(),
         "example_spec": {
             "site": "x",
             "background": "#0f172a",

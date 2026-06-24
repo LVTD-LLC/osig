@@ -115,6 +115,7 @@ class TestSeoSurface:
             password="password",
         )
         EmailAddress.objects.create(user=user, email=user.email, primary=True, verified=True)
+        ProfileUsage.objects.create(profile=user.profile, daily_count=3, monthly_count=9)
         client.force_login(user)
 
         response = client.get(reverse("settings"))
@@ -129,6 +130,14 @@ class TestSeoSurface:
         assert reverse("account_logout") in body
         assert 'data-controller="clipboard"' in body
         assert 'data-action="clipboard#copy"' in body
+        assert "Billing status" in body
+        assert "No active subscription" in body
+        assert "Applied to rendered images" in body
+        assert "https://osig.app/mcp/" in body
+        assert "3 / 1000" in body
+        assert "9 / 10000" in body
+        assert "X-API-Key" in body
+        assert "get_image_contract" in body
         assert "copyToken()" not in body
         assert "Compare plans" not in body
         assert reverse("pricing") not in body
@@ -152,6 +161,22 @@ class TestSeoSurface:
         assert "3 / 10" in body
         assert "Monthly quota" in body
         assert "12 / 100" in body
+
+    @override_settings(OSIG_MCP_URL="http://localhost:8765/mcp")
+    def test_settings_page_uses_configured_mcp_url(self, client, django_user_model):
+        user = django_user_model.objects.create_user(
+            username="self-host-settings-user",
+            email="self-host-settings@example.com",
+            password="password",
+        )
+        EmailAddress.objects.create(user=user, email=user.email, primary=True, verified=True)
+        client.force_login(user)
+
+        response = client.get(reverse("settings"))
+
+        assert response.status_code == 200
+        body = response.content.decode()
+        assert "http://localhost:8765/mcp" in body
 
     def test_removed_public_pages_redirect_home(self, client):
         removed_paths = [

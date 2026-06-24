@@ -77,12 +77,14 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
 
         context["hosted_access"] = {
             "plan_label": "Paid hosted" if has_pro_subscription else "Free hosted",
+            "billing_status": "Subscription active" if has_pro_subscription else "No active subscription",
             "watermark_label": "Removed" if has_pro_subscription else "Applied to rendered images",
             "quota_label": "Tracked for keyed MCP and Studio renders",
             "daily_count": usage.daily_count if usage else 0,
             "daily_limit": settings.OSIG_DAILY_USAGE_LIMIT,
             "monthly_count": usage.monthly_count if usage else 0,
             "monthly_limit": settings.OSIG_MONTHLY_USAGE_LIMIT,
+            "mcp_url": settings.OSIG_MCP_URL,
         }
 
         return context

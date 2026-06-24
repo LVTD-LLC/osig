@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 import requests
-from django.db.models import Count
+from django.db.models import Count, Max
 from django.utils import timezone
 from PIL import UnidentifiedImageError
 
@@ -36,6 +36,21 @@ class RenderMetrics:
     fail_rate_percent: float
     p95_render_ms: int | None
     error_counts: dict[str, int]
+    recent_failures: list[dict[str, int | str]]
+    troubleshooting_hints: list[str]
+
+
+TROUBLESHOOTING_HINTS = {
+    RenderErrorType.TRANSIENT_UPSTREAM_FETCH: (
+        "Check remote image host availability, DNS, and OSIG_IMAGE_FETCH_TIMEOUT_SECONDS before retrying."
+    ),
+    RenderErrorType.UPSTREAM_FETCH_4XX: "Verify image URLs are public, non-expired, and not permission-gated.",
+    RenderErrorType.UPSTREAM_FETCH_5XX: "Retry later or replace the upstream image asset if the remote host is unstable.",
+    RenderErrorType.IMAGE_DECODE_ERROR: "Confirm remote or inline image bytes are valid PNG, JPEG, or WebP data.",
+    RenderErrorType.VALIDATION_ERROR: "Inspect the returned validation details and fix the named field, enum, or bounds.",
+    RenderErrorType.RENDER_ERROR: "Check renderer logs for font, drawing, or output encoding failures.",
+    RenderErrorType.UNKNOWN_ERROR: "Review Sentry, Logfire, and application logs for the underlying exception.",
+}
 
 
 def classify_render_error(exc: Exception) -> str:
@@ -86,13 +101,21 @@ def record_render_attempt(
     )
 
 
-def _p95(values: list[int]) -> int | None:
-    if not values:
+def _p95_duration(queryset) -> int | None:
+    max_id = queryset.aggregate(max_id=Max("id"))["max_id"]
+    if max_id is None:
         return None
 
-    sorted_values = sorted(values)
-    index = max(0, math.ceil(len(sorted_values) * 0.95) - 1)
-    return sorted_values[index]
+    snapshot_queryset = queryset.filter(id__lte=max_id)
+    count = snapshot_queryset.count()
+    if not count:
+        return None
+
+    index = max(0, math.ceil(count * 0.95) - 1)
+    try:
+        return snapshot_queryset.order_by("duration_ms").values_list("duration_ms", flat=True)[index]
+    except IndexError:
+        return None
 
 
 def build_render_metrics(*, window_hours: int = 24) -> RenderMetrics:
@@ -103,18 +126,33 @@ def build_render_metrics(*, window_hours: int = 24) -> RenderMetrics:
     failed_attempts = queryset.filter(success=False).count()
 
     fail_rate_percent = round((failed_attempts / total_attempts) * 100, 2) if total_attempts else 0.0
-    durations = list(queryset.filter(success=True).values_list("duration_ms", flat=True))
+    successful_renders = queryset.filter(success=True)
 
     error_counts = {
         item["error_type"]: item["count"]
         for item in queryset.filter(success=False).values("error_type").annotate(count=Count("id")).order_by("-count")
     }
+    recent_failures = [
+        {
+            "created_at": attempt.created_at.isoformat(),
+            "renderer": attempt.renderer,
+            "error_type": attempt.error_type,
+            "duration_ms": attempt.duration_ms,
+            "attempt_number": attempt.attempt_number,
+        }
+        for attempt in queryset.filter(success=False).order_by("-created_at")[:5]
+    ]
+    troubleshooting_hints = [
+        TROUBLESHOOTING_HINTS[error_type] for error_type in error_counts if error_type in TROUBLESHOOTING_HINTS
+    ]
 
     return RenderMetrics(
         window_hours=window_hours,
         total_attempts=total_attempts,
         failed_attempts=failed_attempts,
         fail_rate_percent=fail_rate_percent,
-        p95_render_ms=_p95(durations),
+        p95_render_ms=_p95_duration(successful_renders),
         error_counts=error_counts,
+        recent_failures=recent_failures,
+        troubleshooting_hints=troubleshooting_hints,
     )

@@ -2,10 +2,13 @@
 
 OSIG renders deterministic Open Graph and Twitter/X preview images from typed canvas specs.
 
-It has two primary usage paths:
+Core references:
 
 - AI agent usage through MCP: see [docs/agent-mcp.md](docs/agent-mcp.md)
-- Human preview/export usage through the Agent Image Studio on the home page.
+- Repository publishing examples: see [docs/agent-repo-publishing.md](docs/agent-repo-publishing.md)
+- Deterministic OG template starters: see [docs/template-library.md](docs/template-library.md)
+- Self-hosting: see [docs/self-hosting.md](docs/self-hosting.md)
+- Human preview/export usage through the Studio API and account surfaces.
 
 The legacy `/g` URL generator and fixed template contract have been removed. Agents should render previews and export image bytes through MCP or the Studio API instead of publishing query-string image URLs.
 

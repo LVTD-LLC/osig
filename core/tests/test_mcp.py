@@ -68,6 +68,7 @@ def test_mcp_lists_agent_image_tools():
         "render_image_preview",
         "export_image",
     }.issubset(tool_names)
+    assert "build_og_image_spec" not in tool_names
     assert "list_image_templates" not in tool_names
     assert "build_signed_image_url" not in tool_names
     assert "list_recent_generated_images" not in tool_names
@@ -105,7 +106,20 @@ def test_get_image_contract_describes_canvas_workflow():
     ]
     assert result.data["access"]["trial_boundaries"]["watermark_applied"] is True
     assert result.data["access"]["trial_boundaries"]["private_or_admin_tools_exposed"] is False
+    assert {template["id"] for template in result.data["template_library"]} == {
+        "repo_preview",
+        "article_summary",
+        "product_update",
+    }
+    assert set(result.data["template_library"][0]["example_specs"]) == {"x", "meta"}
     assert "export_image" in " ".join(result.data["workflow"])
+
+
+@override_settings(OSIG_MCP_URL="http://localhost:8765/mcp")
+def test_get_image_contract_uses_configured_mcp_url():
+    result = _run(_call_tool("get_image_contract"))
+
+    assert result.data["access"]["hosted_mcp_url"] == "http://localhost:8765/mcp"
 
 
 @override_settings(OSIG_MCP_TRIAL_ENABLED=False, OSIG_MCP_REQUIRE_AUTH=False)
@@ -115,6 +129,110 @@ def test_get_image_contract_matches_disabled_trial_auth_enforcement():
     assert result.data["access"]["authentication_required"] is True
     assert result.data["access"]["trial_enabled"] is False
     assert "OSIG_MCP_TRIAL_ENABLED is disabled" in result.data["access"]["trial_note"]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_og_template_library_returns_valid_template_specs():
+    from agent_images.services import ImageSpec, normalize_image_spec
+    from agent_images.templates import OgTemplateContent, build_og_image_spec
+
+    data = build_og_image_spec(
+        OgTemplateContent(
+            title="Launch agent-ready OG images",
+            subtitle="Preview, export, and commit deterministic assets.",
+            site_name="OSIG",
+            logo={"type": "url", "url": "https://example.com/logo.png"},
+            image={"type": "url", "url": "https://example.com/preview.png"},
+            tags=["MCP", "Open Graph"],
+        ),
+        template="product_update",
+        site="meta",
+    )
+
+    spec = data["spec"]
+    normalized = normalize_image_spec(ImageSpec.model_validate(spec))
+
+    assert data["template"]["id"] == "product_update"
+    assert data["template"]["slots"] == ["title", "subtitle", "site_name", "logo", "image", "tags"]
+    assert data["output"]["width"] == 600
+    assert data["output"]["height"] == 315
+    assert spec["site"] == "meta"
+    assert spec["width"] == 600
+    assert spec["height"] == 315
+    assert any(layer.get("text") == "Launch agent-ready OG images" for layer in spec["layers"])
+    assert any(layer.get("src") == {"type": "url", "url": "https://example.com/logo.png"} for layer in spec["layers"])
+    assert any(
+        layer.get("src") == {"type": "url", "url": "https://example.com/preview.png"} for layer in spec["layers"]
+    )
+    assert normalized.width == 600
+    assert normalized.height == 315
+
+
+def test_template_library_contract_returns_independent_copy():
+    from agent_images.templates import template_library_contract
+
+    first_contract = template_library_contract()
+    first_contract[0]["slots"].append("mutated")
+    first_contract[0]["example_specs"]["x"]["layers"].clear()
+
+    second_contract = template_library_contract()
+
+    assert "mutated" not in second_contract[0]["slots"]
+    assert second_contract[0]["example_specs"]["x"]["layers"]
+
+
+def test_template_library_contract_skips_invalid_template_examples(monkeypatch):
+    from pydantic import ValidationError
+
+    import agent_images.templates as template_module
+    from agent_images.services import ImageSpec
+
+    validation_error = None
+    try:
+        ImageSpec.model_validate({"site": "x", "width": 1})
+    except ValidationError as exc:
+        validation_error = exc
+    assert validation_error is not None
+
+    original_build_og_image_spec = template_module.build_og_image_spec
+
+    def build_with_invalid_repo_preview(content, *, template, site, output_format):
+        if template == "repo_preview":
+            raise validation_error
+        return original_build_og_image_spec(content, template=template, site=site, output_format=output_format)
+
+    template_module._cached_template_library_contract.cache_clear()
+    monkeypatch.setattr(template_module, "build_og_image_spec", build_with_invalid_repo_preview)
+
+    try:
+        contract = template_module.template_library_contract()
+    finally:
+        template_module._cached_template_library_contract.cache_clear()
+
+    assert {template["id"] for template in contract} == {"article_summary", "product_update"}
+
+
+def test_og_template_content_validates_image_sources_early():
+    from pydantic import ValidationError
+
+    from agent_images.templates import OgTemplateContent
+
+    with pytest.raises(ValidationError) as exc_info:
+        OgTemplateContent(title="Launch", logo={"type": "url", "url": "http://internal-service/logo.png"})
+
+    assert "Image URLs must use HTTPS" in str(exc_info.value)
+
+
+def test_og_template_layout_uses_x_dimensions_as_scale_reference(monkeypatch):
+    import agent_images.templates as template_module
+
+    def dimensions_for(site):
+        return (1200, 630) if site == "x" else (600, 315)
+
+    monkeypatch.setattr(template_module, "get_image_dimensions", dimensions_for)
+
+    assert template_module._base_layout("x") == (1200, 630, 1.0, 1.0)
+    assert template_module._base_layout("meta") == (600, 315, 0.5, 0.5)
 
 
 @pytest.mark.django_db(transaction=True)

@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from PIL import Image
 from pydantic import ValidationError
 
-from agent_images.services import ImageSpec, normalize_image_spec, render_image
+from agent_images.services import ImageSpec, format_validation_errors, normalize_image_spec, render_image
 from core.image_utils import load_font
 
 
@@ -86,12 +86,88 @@ def test_studio_render_api_returns_image_payload(client, monkeypatch):
 def test_studio_render_api_rejects_invalid_specs(client):
     response = client.post(
         "/api/studio/render",
-        data=json.dumps({"spec": {"style": "unknown", "title": "Invalid"}}),
+        data=json.dumps({"spec": {"site": "linkedin", "width": 100, "height": 100}}),
         content_type="application/json",
     )
 
     assert response.status_code == 400
-    assert response.json()["error"] == "invalid_spec"
+    payload = response.json()
+    assert payload["error"] == "invalid_spec"
+    assert {
+        "field": "site",
+        "message": "Input should be 'x' or 'meta'",
+        "type": "literal_error",
+        "fallback_normalization_applied": False,
+        "expected": "one of 'x' or 'meta'",
+        "accepted_values": ["x", "meta"],
+    } in payload["details"]
+    assert {
+        "field": "width",
+        "message": "Input should be greater than or equal to 200",
+        "type": "greater_than_equal",
+        "fallback_normalization_applied": False,
+        "expected": "integer custom canvas width",
+        "bounds": {"minimum": 200, "maximum": 2000},
+    } in payload["details"]
+
+
+def test_format_validation_errors_preserves_exclusive_bounds():
+    details = format_validation_errors(
+        [
+            {
+                "loc": ("quality",),
+                "msg": "Input should be greater than 0",
+                "type": "greater_than",
+                "ctx": {"gt": 0, "lt": 101},
+            }
+        ]
+    )
+
+    assert details == [
+        {
+            "field": "quality",
+            "message": "Input should be greater than 0",
+            "type": "greater_than",
+            "fallback_normalization_applied": False,
+            "bounds": {"exclusive_minimum": 0, "exclusive_maximum": 101},
+        }
+    ]
+
+
+def test_format_validation_errors_preserves_fields_named_like_union_labels():
+    details = format_validation_errors(
+        [
+            {
+                "loc": ("layers", 0, "text", "text"),
+                "msg": "Field required",
+                "type": "missing",
+            }
+        ]
+    )
+
+    assert details == [
+        {
+            "field": "layers[0].text",
+            "message": "Field required",
+            "type": "missing",
+            "fallback_normalization_applied": False,
+            "expected": "required field",
+        }
+    ]
+
+
+def test_format_validation_errors_preserves_non_source_nested_url_paths():
+    details = format_validation_errors(
+        [
+            {
+                "loc": ("url", "url"),
+                "msg": "Field required",
+                "type": "missing",
+            }
+        ]
+    )
+
+    assert details[0]["field"] == "url.url"
 
 
 @pytest.mark.django_db

@@ -1,8 +1,8 @@
 # Agent MCP Usage
 
-Use OSIG's MCP server when an AI agent needs to inspect canvas capabilities, render previews, and export deterministic social image bytes.
+Use OSIG's MCP server when an AI agent needs to inspect canvas capabilities, start from template specs, render previews, and export deterministic social image bytes.
 
-This guide is for agents and agent-client setup. Humans can exercise the same flow in the Agent Image Studio on the home page.
+This guide is for agents and agent-client setup. Humans can exercise the same structured specs through the Studio render API and account setup surfaces.
 
 ## Hosted Endpoint
 
@@ -120,13 +120,81 @@ Admin render metrics are not exposed through the unauthenticated MCP server.
 1. Configure OSIG as an MCP server in the agent client.
 2. Verify the configured server exposes the OSIG tools.
 3. Call `get_image_contract`.
-4. Build a canvas spec with dimensions, background, and ordered `rect`, `text`, and `image` layers.
+4. Build a canvas spec directly, or start from a `template_library` example returned by `get_image_contract`.
 5. Call `normalize_image_spec` to catch canonical params and warnings.
 6. Call `render_image_preview` while iterating.
 7. Call `export_image` once the preview is ready.
 8. Save the returned bytes into the repository and point `og:image`, `twitter:image`, and schema image fields at that committed/static asset.
 
 Preview responses are not the production publishing signal. Use the `preview.final=false` metadata to iterate cheaply, then call `export_image` and use the returned `export.suggested_filename`, `export.cache_key`, content-scoped `spec_sha256`, and `image_sha256` for commit-ready assets and cache-busting. `spec_sha256` excludes the profile key so key rotation does not change the content fingerprint.
+
+## Template Starters
+
+`get_image_contract` returns a `template_library` array with validated `x` and `meta` example specs. Templates are spec starters only. They do not render, publish, create public URLs, or bypass quota/watermark behavior.
+
+```json
+{
+  "template": "product_update",
+  "site": "x",
+  "content": {
+    "title": "Launch agent-ready OG images",
+    "subtitle": "Preview, export, and commit deterministic assets.",
+    "site_name": "OSIG",
+    "logo": { "type": "url", "url": "https://example.com/logo.png" },
+    "image": { "type": "url", "url": "https://example.com/preview.png" },
+    "tags": ["MCP", "Open Graph"]
+  }
+}
+```
+
+Each example spec is ordinary canvas JSON. Replace text, site labels, image sources, and tags before calling `normalize_image_spec`.
+
+Available templates:
+
+- `repo_preview`
+- `article_summary`
+- `product_update`
+
+See [OG Template Library](template-library.md) for slot limits and template intent.
+
+## Studio Render API
+
+The same canvas spec can be posted to the Studio API:
+
+```http
+POST /api/studio/render
+Content-Type: application/json
+```
+
+```json
+{
+  "spec": {
+    "site": "x",
+    "layers": [
+      { "kind": "text", "x": 40, "y": 40, "text": "Studio API render" }
+    ]
+  }
+}
+```
+
+Invalid specs return machine-readable details:
+
+```json
+{
+  "error": "invalid_spec",
+  "message": "Image spec is invalid.",
+  "details": [
+    {
+      "field": "site",
+      "message": "Input should be 'x' or 'meta'",
+      "type": "literal_error",
+      "expected": "one of 'x' or 'meta'",
+      "accepted_values": ["x", "meta"],
+      "fallback_normalization_applied": false
+    }
+  ]
+}
+```
 
 ## Canvas Spec
 
