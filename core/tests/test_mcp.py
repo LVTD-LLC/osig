@@ -68,6 +68,7 @@ def test_mcp_lists_agent_image_tools():
         "render_image_preview",
         "export_image",
     }.issubset(tool_names)
+    assert "build_og_image_spec" not in tool_names
     assert "list_image_templates" not in tool_names
     assert "build_signed_image_url" not in tool_names
     assert "list_recent_generated_images" not in tool_names
@@ -105,6 +106,12 @@ def test_get_image_contract_describes_canvas_workflow():
     ]
     assert result.data["access"]["trial_boundaries"]["watermark_applied"] is True
     assert result.data["access"]["trial_boundaries"]["private_or_admin_tools_exposed"] is False
+    assert {template["id"] for template in result.data["template_library"]} == {
+        "repo_preview",
+        "article_summary",
+        "product_update",
+    }
+    assert set(result.data["template_library"][0]["example_specs"]) == {"x", "meta"}
     assert "export_image" in " ".join(result.data["workflow"])
 
 
@@ -115,6 +122,43 @@ def test_get_image_contract_matches_disabled_trial_auth_enforcement():
     assert result.data["access"]["authentication_required"] is True
     assert result.data["access"]["trial_enabled"] is False
     assert "OSIG_MCP_TRIAL_ENABLED is disabled" in result.data["access"]["trial_note"]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_og_template_library_returns_valid_template_specs():
+    from agent_images.services import ImageSpec, normalize_image_spec
+    from agent_images.templates import OgTemplateContent, build_og_image_spec
+
+    data = build_og_image_spec(
+        OgTemplateContent(
+            title="Launch agent-ready OG images",
+            subtitle="Preview, export, and commit deterministic assets.",
+            site_name="OSIG",
+            logo={"type": "url", "url": "https://example.com/logo.png"},
+            image={"type": "url", "url": "https://example.com/preview.png"},
+            tags=["MCP", "Open Graph"],
+        ),
+        template="product_update",
+        site="meta",
+    )
+
+    spec = data["spec"]
+    normalized = normalize_image_spec(ImageSpec.model_validate(spec))
+
+    assert data["template"]["id"] == "product_update"
+    assert data["template"]["slots"] == ["title", "subtitle", "site_name", "logo", "image", "tags"]
+    assert data["output"]["width"] == 600
+    assert data["output"]["height"] == 315
+    assert spec["site"] == "meta"
+    assert spec["width"] == 600
+    assert spec["height"] == 315
+    assert any(layer.get("text") == "Launch agent-ready OG images" for layer in spec["layers"])
+    assert any(layer.get("src") == {"type": "url", "url": "https://example.com/logo.png"} for layer in spec["layers"])
+    assert any(
+        layer.get("src") == {"type": "url", "url": "https://example.com/preview.png"} for layer in spec["layers"]
+    )
+    assert normalized.width == 600
+    assert normalized.height == 315
 
 
 @pytest.mark.django_db(transaction=True)

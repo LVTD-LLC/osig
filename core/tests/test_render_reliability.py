@@ -129,3 +129,16 @@ def test_render_metrics_dashboard_returns_fail_rate_and_p95(client):
     assert payload["fail_rate_percent"] == 25.0
     assert payload["p95_render_ms"] == 300
     assert payload["error_counts"][RenderErrorType.TRANSIENT_UPSTREAM_FETCH] == 1
+    assert payload["recent_failures"] == [
+        {
+            "created_at": payload["recent_failures"][0]["created_at"],
+            "renderer": "canvas",
+            "error_type": RenderErrorType.TRANSIENT_UPSTREAM_FETCH,
+            "duration_ms": 150,
+            "attempt_number": 1,
+        }
+    ]
+    assert (
+        "Check remote image host availability, DNS, and OSIG_IMAGE_FETCH_TIMEOUT_SECONDS before retrying."
+        in payload["troubleshooting_hints"]
+    )

@@ -38,4 +38,6 @@ def get_render_metrics(request: HttpRequest, hours: int = 24):
         fail_rate_percent=metrics.fail_rate_percent,
         p95_render_ms=metrics.p95_render_ms,
         error_counts=metrics.error_counts,
+        recent_failures=metrics.recent_failures,
+        troubleshooting_hints=metrics.troubleshooting_hints,
     )

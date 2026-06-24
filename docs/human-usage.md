@@ -1,14 +1,14 @@
 # Studio Usage
 
-The old public `/g` URL generator has been removed. Humans now use the Agent Image Studio on the home page to exercise the same structured image spec used by MCP tools.
+The old public `/g` URL generator has been removed. Humans can exercise the same structured image spec used by MCP tools through the Studio render API and account setup surfaces.
 
 ## Workflow
 
-1. Open the Studio.
-2. Compose a canvas with dimensions, background fill, format, and ordered text/image/rectangle layers.
-3. Render a preview.
-4. Copy the repository payload or download the generated image.
-5. Commit the image into the target project and reference that asset in Open Graph and Twitter metadata.
+1. Compose a canvas with dimensions, background fill, format, and ordered text/image/rectangle layers.
+2. Render a preview through `POST /api/studio/render`.
+3. Inspect normalized spec metadata, warnings, quota/watermark state, hashes, and output dimensions.
+4. Export through MCP when committing final image bytes into a target project.
+5. Reference the committed asset in Open Graph and Twitter metadata.
 
 Fonts can be bundled ids such as `helvetica`, or Google Fonts provider values such as `google:inter`, `google:open-sans`, and `google:playfair-display`. Provider fonts are fetched on first render and cached locally.
 

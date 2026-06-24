@@ -36,6 +36,21 @@ class RenderMetrics:
     fail_rate_percent: float
     p95_render_ms: int | None
     error_counts: dict[str, int]
+    recent_failures: list[dict[str, int | str]]
+    troubleshooting_hints: list[str]
+
+
+TROUBLESHOOTING_HINTS = {
+    RenderErrorType.TRANSIENT_UPSTREAM_FETCH: (
+        "Check remote image host availability, DNS, and OSIG_IMAGE_FETCH_TIMEOUT_SECONDS before retrying."
+    ),
+    RenderErrorType.UPSTREAM_FETCH_4XX: "Verify image URLs are public, non-expired, and not permission-gated.",
+    RenderErrorType.UPSTREAM_FETCH_5XX: "Retry later or replace the upstream image asset if the remote host is unstable.",
+    RenderErrorType.IMAGE_DECODE_ERROR: "Confirm remote or inline image bytes are valid PNG, JPEG, or WebP data.",
+    RenderErrorType.VALIDATION_ERROR: "Inspect the returned validation details and fix the named field, enum, or bounds.",
+    RenderErrorType.RENDER_ERROR: "Check renderer logs for font, drawing, or output encoding failures.",
+    RenderErrorType.UNKNOWN_ERROR: "Review Sentry, Logfire, and application logs for the underlying exception.",
+}
 
 
 def classify_render_error(exc: Exception) -> str:
@@ -109,6 +124,19 @@ def build_render_metrics(*, window_hours: int = 24) -> RenderMetrics:
         item["error_type"]: item["count"]
         for item in queryset.filter(success=False).values("error_type").annotate(count=Count("id")).order_by("-count")
     }
+    recent_failures = [
+        {
+            "created_at": attempt.created_at.isoformat(),
+            "renderer": attempt.renderer,
+            "error_type": attempt.error_type,
+            "duration_ms": attempt.duration_ms,
+            "attempt_number": attempt.attempt_number,
+        }
+        for attempt in queryset.filter(success=False).order_by("-created_at")[:5]
+    ]
+    troubleshooting_hints = [
+        TROUBLESHOOTING_HINTS[error_type] for error_type in error_counts if error_type in TROUBLESHOOTING_HINTS
+    ]
 
     return RenderMetrics(
         window_hours=window_hours,
@@ -117,4 +145,6 @@ def build_render_metrics(*, window_hours: int = 24) -> RenderMetrics:
         fail_rate_percent=fail_rate_percent,
         p95_render_ms=_p95(durations),
         error_counts=error_counts,
+        recent_failures=recent_failures,
+        troubleshooting_hints=troubleshooting_hints,
     )

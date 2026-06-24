@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from core.models import Profile
 
-from .services import ImageRenderFailed, ImageSpec, ImageUsageLimitExceeded, render_image
+from .services import ImageRenderFailed, ImageSpec, ImageUsageLimitExceeded, format_validation_errors, render_image
 
 
 def _profile_for_request(request: HttpRequest):
@@ -39,7 +39,11 @@ def render_studio_image(request: HttpRequest) -> JsonResponse:
         return JsonResponse(result)
     except ValidationError as exc:
         return JsonResponse(
-            {"error": "invalid_spec", "message": "Image spec is invalid.", "details": exc.errors()},
+            {
+                "error": "invalid_spec",
+                "message": "Image spec is invalid.",
+                "details": format_validation_errors(exc.errors()),
+            },
             status=400,
         )
     except PermissionError as exc:

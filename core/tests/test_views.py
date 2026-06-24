@@ -115,6 +115,7 @@ class TestSeoSurface:
             password="password",
         )
         EmailAddress.objects.create(user=user, email=user.email, primary=True, verified=True)
+        ProfileUsage.objects.create(profile=user.profile, daily_count=3, monthly_count=9)
         client.force_login(user)
 
         response = client.get(reverse("settings"))
@@ -129,6 +130,14 @@ class TestSeoSurface:
         assert reverse("account_logout") in body
         assert 'data-controller="clipboard"' in body
         assert 'data-action="clipboard#copy"' in body
+        assert "Billing status" in body
+        assert "No active subscription" in body
+        assert "Applied to rendered images" in body
+        assert "https://osig.app/mcp/" in body
+        assert "3 / 1000" in body
+        assert "9 / 10000" in body
+        assert "X-API-Key" in body
+        assert "get_image_contract" in body
         assert "copyToken()" not in body
         assert "Compare plans" not in body
         assert reverse("pricing") not in body

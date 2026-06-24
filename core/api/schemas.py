@@ -19,6 +19,14 @@ class BlogPostOut(Schema):
     message: str
 
 
+class RecentRenderFailureOut(Schema):
+    created_at: str
+    renderer: str
+    error_type: str
+    duration_ms: int
+    attempt_number: int
+
+
 class RenderMetricsOut(Schema):
     window_hours: int
     total_attempts: int
@@ -26,3 +34,5 @@ class RenderMetricsOut(Schema):
     fail_rate_percent: float
     p95_render_ms: int | None
     error_counts: dict[str, int]
+    recent_failures: list[RecentRenderFailureOut]
+    troubleshooting_hints: list[str]

@@ -55,6 +55,10 @@ Returns:
 - `fail_rate_percent`
 - `p95_render_ms`
 - `error_counts`
+- `recent_failures`
+- `troubleshooting_hints`
+
+Recent failures include the attempt timestamp, renderer, error type, duration, and attempt number. Hints are derived from observed error categories so operators can distinguish invalid specs from upstream image fetch, decoding, and renderer failures.
 
 ## Admin visibility
 

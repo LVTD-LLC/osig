@@ -86,12 +86,29 @@ def test_studio_render_api_returns_image_payload(client, monkeypatch):
 def test_studio_render_api_rejects_invalid_specs(client):
     response = client.post(
         "/api/studio/render",
-        data=json.dumps({"spec": {"style": "unknown", "title": "Invalid"}}),
+        data=json.dumps({"spec": {"site": "linkedin", "width": 100, "height": 100}}),
         content_type="application/json",
     )
 
     assert response.status_code == 400
-    assert response.json()["error"] == "invalid_spec"
+    payload = response.json()
+    assert payload["error"] == "invalid_spec"
+    assert {
+        "field": "site",
+        "message": "Input should be 'x' or 'meta'",
+        "type": "literal_error",
+        "fallback_normalization_applied": False,
+        "expected": "one of 'x' or 'meta'",
+        "accepted_values": ["x", "meta"],
+    } in payload["details"]
+    assert {
+        "field": "width",
+        "message": "Input should be greater than or equal to 200",
+        "type": "greater_than_equal",
+        "fallback_normalization_applied": False,
+        "expected": "integer custom canvas width",
+        "bounds": {"minimum": 200, "maximum": 2000},
+    } in payload["details"]
 
 
 @pytest.mark.django_db
