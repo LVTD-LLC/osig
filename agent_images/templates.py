@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from copy import deepcopy
+from functools import lru_cache
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -410,9 +412,9 @@ def build_og_image_spec(
     content: OgTemplateContent,
     template: TemplateId = "repo_preview",
     site: TemplateSite = "x",
-    format: TemplateFormat = "png",
+    output_format: TemplateFormat = "png",
 ) -> dict[str, Any]:
-    spec = _template_spec(template, content, site=site, output_format=format)
+    spec = _template_spec(template, content, site=site, output_format=output_format)
 
     from .services import ImageSpec
 
@@ -430,12 +432,13 @@ def build_og_image_spec(
         "output": {
             "width": width,
             "height": height,
-            "content_type": "image/jpeg" if format == "jpeg" else "image/png",
+            "content_type": "image/jpeg" if output_format == "jpeg" else "image/png",
         },
     }
 
 
-def template_library_contract() -> list[dict[str, Any]]:
+@lru_cache(maxsize=1)
+def _cached_template_library_contract() -> tuple[dict[str, Any], ...]:
     example_content = OgTemplateContent(
         title="Ship repo-ready social images",
         subtitle="Generate deterministic Open Graph assets from structured content.",
@@ -443,7 +446,7 @@ def template_library_contract() -> list[dict[str, Any]]:
         tags=["MCP", "OG image"],
     )
 
-    return [
+    return tuple(
         {
             "id": template_id,
             "name": definition["name"],
@@ -452,9 +455,15 @@ def template_library_contract() -> list[dict[str, Any]]:
             "supported_sites": ["x", "meta"],
             "output_formats": ["png", "jpeg"],
             "example_specs": {
-                "x": build_og_image_spec(example_content, template=template_id, site="x", format="png")["spec"],
-                "meta": build_og_image_spec(example_content, template=template_id, site="meta", format="png")["spec"],
+                "x": build_og_image_spec(example_content, template=template_id, site="x", output_format="png")["spec"],
+                "meta": build_og_image_spec(example_content, template=template_id, site="meta", output_format="png")[
+                    "spec"
+                ],
             },
         }
         for template_id, definition in TEMPLATE_LIBRARY.items()
-    ]
+    )
+
+
+def template_library_contract() -> list[dict[str, Any]]:
+    return [deepcopy(template) for template in _cached_template_library_contract()]

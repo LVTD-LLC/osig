@@ -161,6 +161,19 @@ def test_og_template_library_returns_valid_template_specs():
     assert normalized.height == 315
 
 
+def test_template_library_contract_returns_independent_copy():
+    from agent_images.templates import template_library_contract
+
+    first_contract = template_library_contract()
+    first_contract[0]["slots"].append("mutated")
+    first_contract[0]["example_specs"]["x"]["layers"].clear()
+
+    second_contract = template_library_contract()
+
+    assert "mutated" not in second_contract[0]["slots"]
+    assert second_contract[0]["example_specs"]["x"]["layers"]
+
+
 @pytest.mark.django_db(transaction=True)
 def test_trial_mcp_core_tools_work_without_authentication_or_key(monkeypatch):
     import agent_images.services as agent_services
