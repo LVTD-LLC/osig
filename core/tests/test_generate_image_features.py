@@ -156,6 +156,20 @@ def test_format_validation_errors_preserves_fields_named_like_union_labels():
     ]
 
 
+def test_format_validation_errors_preserves_non_source_nested_url_paths():
+    details = format_validation_errors(
+        [
+            {
+                "loc": ("url", "url"),
+                "msg": "Field required",
+                "type": "missing",
+            }
+        ]
+    )
+
+    assert details[0]["field"] == "url.url"
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize("payload", [None, [], 42, "string"])
 def test_studio_render_api_rejects_non_object_json(client, payload):

@@ -181,6 +181,37 @@ def test_template_library_contract_returns_independent_copy():
     assert second_contract[0]["example_specs"]["x"]["layers"]
 
 
+def test_template_library_contract_skips_invalid_template_examples(monkeypatch):
+    from pydantic import ValidationError
+
+    import agent_images.templates as template_module
+    from agent_images.services import ImageSpec
+
+    validation_error = None
+    try:
+        ImageSpec.model_validate({"site": "x", "width": 1})
+    except ValidationError as exc:
+        validation_error = exc
+    assert validation_error is not None
+
+    original_build_og_image_spec = template_module.build_og_image_spec
+
+    def build_with_invalid_repo_preview(content, *, template, site, output_format):
+        if template == "repo_preview":
+            raise validation_error
+        return original_build_og_image_spec(content, template=template, site=site, output_format=output_format)
+
+    template_module._cached_template_library_contract.cache_clear()
+    monkeypatch.setattr(template_module, "build_og_image_spec", build_with_invalid_repo_preview)
+
+    try:
+        contract = template_module.template_library_contract()
+    finally:
+        template_module._cached_template_library_contract.cache_clear()
+
+    assert {template["id"] for template in contract} == {"article_summary", "product_update"}
+
+
 def test_og_template_content_validates_image_sources_early():
     from pydantic import ValidationError
 

@@ -331,7 +331,13 @@ def _validation_field_path(location: tuple[Any, ...] | list[Any]) -> str:
     for index, part in enumerate(location):
         if _is_pydantic_union_location_label(location, index):
             continue
-        if part == "url" and index + 1 < len(location) and location[index + 1] == "url":
+        if (
+            part == "url"
+            and index > 0
+            and location[index - 1] == "src"
+            and index + 1 < len(location)
+            and location[index + 1] == "url"
+        ):
             continue
         if isinstance(part, int):
             if parts:

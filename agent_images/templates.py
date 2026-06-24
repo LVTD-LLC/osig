@@ -4,14 +4,28 @@ from copy import deepcopy
 from functools import lru_cache
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, field_validator
 
 from core.image_utils import get_image_dimensions
+from osig.utils import get_osig_logger
 
 TemplateId = Literal["repo_preview", "article_summary", "product_update"]
 TemplateSite = Literal["x", "meta"]
 TemplateFormat = Literal["png", "jpeg"]
 TemplateTag = Annotated[str, Field(min_length=1, max_length=32)]
+
+logger = get_osig_logger(__name__)
+_IMAGE_SOURCE_ADAPTER: TypeAdapter[Any] | None = None
+
+
+def _image_source_adapter() -> TypeAdapter[Any]:
+    global _IMAGE_SOURCE_ADAPTER
+
+    if _IMAGE_SOURCE_ADAPTER is None:
+        from agent_images.services import ImageSource
+
+        _IMAGE_SOURCE_ADAPTER = TypeAdapter(ImageSource)
+    return _IMAGE_SOURCE_ADAPTER
 
 
 class OgTemplateContent(BaseModel):
@@ -39,9 +53,7 @@ class OgTemplateContent(BaseModel):
         if source is None:
             return None
 
-        from agent_images.services import ImageSource
-
-        validated_source = TypeAdapter(ImageSource).validate_python(source)
+        validated_source = _image_source_adapter().validate_python(source)
         return validated_source.model_dump()
 
 
@@ -457,23 +469,32 @@ def _cached_template_library_contract() -> tuple[dict[str, Any], ...]:
         tags=["MCP", "OG image"],
     )
 
-    return tuple(
-        {
-            "id": template_id,
-            "name": definition["name"],
-            "description": definition["description"],
-            "slots": definition["slots"],
-            "supported_sites": ["x", "meta"],
-            "output_formats": ["png", "jpeg"],
-            "example_specs": {
+    templates: list[dict[str, Any]] = []
+    for template_id, definition in TEMPLATE_LIBRARY.items():
+        try:
+            example_specs = {
                 "x": build_og_image_spec(example_content, template=template_id, site="x", output_format="png")["spec"],
                 "meta": build_og_image_spec(example_content, template=template_id, site="meta", output_format="png")[
                     "spec"
                 ],
-            },
-        }
-        for template_id, definition in TEMPLATE_LIBRARY.items()
-    )
+            }
+        except ValidationError as exc:
+            logger.warning("Skipping invalid OG template contract example", template_id=template_id, error=str(exc))
+            continue
+
+        templates.append(
+            {
+                "id": template_id,
+                "name": definition["name"],
+                "description": definition["description"],
+                "slots": definition["slots"],
+                "supported_sites": ["x", "meta"],
+                "output_formats": ["png", "jpeg"],
+                "example_specs": example_specs,
+            }
+        )
+
+    return tuple(templates)
 
 
 def template_library_contract() -> list[dict[str, Any]]:
