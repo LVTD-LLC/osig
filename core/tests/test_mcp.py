@@ -115,6 +115,13 @@ def test_get_image_contract_describes_canvas_workflow():
     assert "export_image" in " ".join(result.data["workflow"])
 
 
+@override_settings(OSIG_MCP_URL="http://localhost:8765/mcp")
+def test_get_image_contract_uses_configured_mcp_url():
+    result = _run(_call_tool("get_image_contract"))
+
+    assert result.data["access"]["hosted_mcp_url"] == "http://localhost:8765/mcp"
+
+
 @override_settings(OSIG_MCP_TRIAL_ENABLED=False, OSIG_MCP_REQUIRE_AUTH=False)
 def test_get_image_contract_matches_disabled_trial_auth_enforcement():
     result = _run(_call_tool("get_image_contract"))

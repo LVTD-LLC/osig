@@ -8,7 +8,7 @@ from PIL import Image
 
 from agent_images.services import ImageRenderFailed, ImageSpec, render_image
 from core.models import RenderAttempt
-from core.render_observability import RenderErrorType
+from core.render_observability import RenderErrorType, _p95_duration
 
 
 def _canvas_spec(**overrides):
@@ -26,6 +26,23 @@ def _tiny_png_buffer():
     Image.new("RGB", (16, 16), color="white").save(buffer, format="PNG")
     buffer.seek(0)
     return buffer
+
+
+def test_p95_duration_returns_none_when_percentile_row_disappears():
+    class PrunedQuerySet:
+        def count(self):
+            return 1
+
+        def order_by(self, *args):
+            return self
+
+        def values_list(self, *args, **kwargs):
+            return self
+
+        def __getitem__(self, index):
+            raise IndexError
+
+    assert _p95_duration(PrunedQuerySet()) is None
 
 
 @pytest.mark.django_db

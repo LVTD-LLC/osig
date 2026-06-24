@@ -162,6 +162,22 @@ class TestSeoSurface:
         assert "Monthly quota" in body
         assert "12 / 100" in body
 
+    @override_settings(OSIG_MCP_URL="http://localhost:8765/mcp")
+    def test_settings_page_uses_configured_mcp_url(self, client, django_user_model):
+        user = django_user_model.objects.create_user(
+            username="self-host-settings-user",
+            email="self-host-settings@example.com",
+            password="password",
+        )
+        EmailAddress.objects.create(user=user, email=user.email, primary=True, verified=True)
+        client.force_login(user)
+
+        response = client.get(reverse("settings"))
+
+        assert response.status_code == 200
+        body = response.content.decode()
+        assert "http://localhost:8765/mcp" in body
+
     def test_removed_public_pages_redirect_home(self, client):
         removed_paths = [
             "/how-to",

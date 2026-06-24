@@ -107,7 +107,10 @@ def _p95_duration(queryset) -> int | None:
         return None
 
     index = max(0, math.ceil(count * 0.95) - 1)
-    return queryset.order_by("duration_ms").values_list("duration_ms", flat=True)[index]
+    try:
+        return queryset.order_by("duration_ms").values_list("duration_ms", flat=True)[index]
+    except IndexError:
+        return None
 
 
 def build_render_metrics(*, window_hours: int = 24) -> RenderMetrics:

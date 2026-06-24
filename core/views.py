@@ -84,7 +84,7 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
             "daily_limit": settings.OSIG_DAILY_USAGE_LIMIT,
             "monthly_count": usage.monthly_count if usage else 0,
             "monthly_limit": settings.OSIG_MONTHLY_USAGE_LIMIT,
-            "mcp_url": "https://osig.app/mcp/",
+            "mcp_url": settings.OSIG_MCP_URL,
         }
 
         return context

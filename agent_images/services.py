@@ -709,7 +709,7 @@ def image_contract() -> dict[str, Any]:
             }
         },
         "access": {
-            "hosted_mcp_url": "https://osig.app/mcp/",
+            "hosted_mcp_url": settings.OSIG_MCP_URL,
             "authentication_required": authentication_required,
             "trial_enabled": trial_enabled,
             "accepted_profile_key_headers": ["Authorization: Bearer <profile_key>", "X-API-Key: <profile_key>"],
