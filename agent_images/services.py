@@ -397,8 +397,12 @@ def _validation_expected_and_bounds(error: dict[str, Any], field: str) -> tuple[
 
     if "ge" in context:
         bounds["minimum"] = context["ge"]
+    if "gt" in context:
+        bounds["exclusive_minimum"] = context["gt"]
     if "le" in context:
         bounds["maximum"] = context["le"]
+    if "lt" in context:
+        bounds["exclusive_maximum"] = context["lt"]
     if "min_length" in context:
         bounds["minimum_length"] = context["min_length"]
     if "max_length" in context:

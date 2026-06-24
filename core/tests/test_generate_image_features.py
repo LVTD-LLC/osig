@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from PIL import Image
 from pydantic import ValidationError
 
-from agent_images.services import ImageSpec, normalize_image_spec, render_image
+from agent_images.services import ImageSpec, format_validation_errors, normalize_image_spec, render_image
 from core.image_utils import load_font
 
 
@@ -109,6 +109,29 @@ def test_studio_render_api_rejects_invalid_specs(client):
         "expected": "integer custom canvas width",
         "bounds": {"minimum": 200, "maximum": 2000},
     } in payload["details"]
+
+
+def test_format_validation_errors_preserves_exclusive_bounds():
+    details = format_validation_errors(
+        [
+            {
+                "loc": ("quality",),
+                "msg": "Input should be greater than 0",
+                "type": "greater_than",
+                "ctx": {"gt": 0, "lt": 101},
+            }
+        ]
+    )
+
+    assert details == [
+        {
+            "field": "quality",
+            "message": "Input should be greater than 0",
+            "type": "greater_than",
+            "fallback_normalization_applied": False,
+            "bounds": {"exclusive_minimum": 0, "exclusive_maximum": 101},
+        }
+    ]
 
 
 @pytest.mark.django_db
